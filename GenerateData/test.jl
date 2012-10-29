@@ -6,7 +6,11 @@ function dumpHead(d,f)
     write(f,strcat(join(d.data.A.colptr," "),"\n"))
     write(f,strcat(join(d.data.A.rowval," "),"\n"))
     write(f,strcat(join(d.data.A.nzval," "),"\n"))
-
+    Atrans = d.data.A'
+    write(f,"$ncol $nrow $(length(d.data.A.rowval))\n")
+    write(f,strcat(join(Atrans.colptr," "),"\n"))
+    write(f,strcat(join(Atrans.rowval," "),"\n"))
+    write(f,strcat(join(Atrans.nzval," "),"\n"))
 
 end
 

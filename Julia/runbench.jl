@@ -17,6 +17,26 @@ type IterationData
     valid::Bool
 end
 
+type IndexedVector
+    elts::Vector{Float64}
+    nzidx::Vector{Int}
+    nnz::Int
+end
+
+function IndexedVector(densevec::Vector{Float64})
+    elts = zeros(length(densevec))
+    nzidx = zeros(Int,length(densevec))
+    nnz = 0
+    for i in 1:length(densevec)
+        if abs(densevec[i]) > 1e-50
+            nnz += 1
+            nzidx[nnz] = i
+            elts[i] = densevec[i]
+        end
+    end
+    IndexedVector(elts,nzidx,nnz)
+end
+
 function readMat(f)
     s1 = split(readline(f))
     nrow,ncol,nnz = int(s1[1]),int(s1[2]),int(s1[3])
@@ -81,14 +101,62 @@ function doPrice(instance::InstanceData,d::IterationData)
     
     return time() - t
 end
-#end
+
+# linear combination of rows
+# costly to check basic/nonbasic status here. 
+# instead, ignore and assume will be checked later
+function doPriceHyperspase(instance::InstanceData,d::IterationData)
+    A = instance.A
+    Atrans = instance.Atrans
+    nrow,ncol = size(A)
+    output = IndexedVector(zeros(nrow+ncol))
+    outputelts = output.elts
+    outputnzidx = output.nzidx
+    outputnnz = output.nnz
+    rho = IndexedVector(d.priceInput)
+    rhoelts = rho.elts
+    rhoidx = rho.nzidx
+
+    Atrv = Atrans.rowval
+    Atnz = Atrans.nzval
+
+    t = time()
+  
+    for k in 1:rho.nnz
+        # add elt*(row of A) to output
+        row = rhoidx[k]
+        elt = rhoelts[row]
+        for j in Atrans.colptr[row]:(Atrans.colptr[row+1]-1)
+            idx = Atrv[j]
+            val = outputelts[idx]
+            if (val != 0.)
+                val += elt*Atnz[j]
+                outputelts[idx] = val
+                #if (val == 0.) 
+                #    outputelts[idx] = 1e-50
+                #end
+            else
+                outputelts[idx] = elt*Atnz[j]
+                outputnnz += 1
+                outputnzidx[outputnnz] = idx
+            end
+        end
+        # slack value
+        outputelts[row+ncol] = -elt
+        outputnnz += 1
+        outputnzidx[outputnnz] = row+ncol
+    end
+
+    return time() - t
+end
 
 function doBenchmarks(inputname) 
 
     f = open(inputname,"r")
     instance = readInstance(f)
     println("Problem is $(instance.A.m) by $(instance.A.n) with $(length(instance.A.nzval)) nonzeros")
-    benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns")]
+    benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns"),
+        (doPriceHyperspase,"Hyper-sparse matrix-transpose vector product")]
     timings = zeros(length(benchmarks))
     nruns = 0
     while true

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <functional>
 #include <cassert>
+#include <cmath>
 
 using namespace std;
 
@@ -26,6 +27,20 @@ struct IterationData {
 	vector<VariableState> variableState;
 	vector<double> priceInput;
 	bool valid;
+};
+
+struct IndexedVector {
+	vector<double> elts;
+	vector<int> nzidx;
+	int nnz;
+	IndexedVector(vector<double> const& densevec) : nzidx(densevec.size(),0), elts(densevec.size(),0.), nnz(0) {
+		for (int i = 0; i < densevec.size(); i++) {
+			if (fabs(densevec[i]) > 1e-50) {
+				nzidx[nnz++] = i;
+				elts[i] = densevec[i];
+			}
+		}
+	}
 };
 
 SparseMatrixCSC readMat(istream &f) {
@@ -177,6 +192,79 @@ chrono::nanoseconds doPriceBoundsCheck(InstanceData const& instance, IterationDa
 
 }
 
+chrono::nanoseconds doPriceHypersparse(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	SparseMatrixCSC const &Atrans = instance.Atrans;
+	vector<double> outputelts(A.nrow+A.ncol,0.);
+	vector<int> outputnzidx(A.nrow+A.ncol,0);
+	int outputnnz = 0;
+
+	IndexedVector rho(d.priceInput);
+
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int k = 0; k < rho.nnz; k++) {
+		int row = rho.nzidx[k];
+		double elt = rho.elts[row];
+		for (int64_t j = Atrans.colptr[row]; j < Atrans.colptr[row+1]; j++) {
+			int idx = Atrans.rowval[j];
+			if (outputelts[idx] != 0.) {
+				outputelts[idx] += elt*Atrans.nzval[j];
+				//if (outputelts[idx] == 0.) outputelts[idx] = 1e-50;
+			} else {
+				outputelts[idx] = elt*Atrans.nzval[j];
+				assert(outputelts[idx] != 0.);
+				outputnzidx[outputnnz++] = idx;
+			}
+		}
+		outputelts[row+A.ncol] = -elt;
+		outputnzidx[outputnnz++] = row+A.ncol;
+	}
+
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+
+}
+
+chrono::nanoseconds doPriceHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	SparseMatrixCSC const &Atrans = instance.Atrans;
+	vector<double> outputelts(A.nrow+A.ncol,0.);
+	vector<int> outputnzidx(A.nrow+A.ncol,0);
+	int outputnnz = 0;
+
+	IndexedVector rho(d.priceInput);
+
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int k = 0; k < rho.nnz; k++) {
+		int row = rho.nzidx.at(k);
+		double elt = rho.elts.at(row);
+		for (int64_t j = Atrans.colptr[row]; j < Atrans.colptr[row+1]; j++) {
+			int idx = Atrans.rowval.at(j);
+			if (outputelts.at(idx) != 0.) {
+				outputelts.at(idx) += elt*Atrans.nzval.at(j);
+				//if (outputelts[idx] == 0.) outputelts[idx] = 1e-50;
+			} else {
+				outputelts.at(idx) = elt*Atrans.nzval.at(j);
+				outputnzidx.at(outputnnz++) = idx;
+			}
+		}
+		outputelts.at(row+A.ncol) = -elt;
+		outputnzidx.at(outputnnz++) = row+A.ncol;
+	}
+
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+
+}
+
 struct BenchmarkOperation {
 	function<chrono::nanoseconds(InstanceData const&, IterationData const&)> func;
 	string name;
@@ -193,7 +281,9 @@ int main(int argc, char**argv) {
 	
 	vector<BenchmarkOperation> benchmarks{ 
 		{ doPrice, "Matrix transpose-vector product with non-basic columns" },
-		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" }
+		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" },
+		{ doPriceHypersparse, "Hyper-sparse matrix transpose-vector product" },
+		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix transpose-vector product (with bounds checking)" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 
