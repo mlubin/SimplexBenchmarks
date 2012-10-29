@@ -156,7 +156,7 @@ chrono::nanoseconds doPriceBoundsCheck(SparseMatrixCSC const& A, IterationData c
 	for (int i = 0; i < A.nrow; i++) {
 		int k = i + A.ncol;
 		if (d.variableState.at(i) == Basic) continue;
-		output.at(k) = -d.priceInput[i];
+		output.at(k) = -d.priceInput.at(i);
 	}
 
 	auto t2 = chrono::high_resolution_clock::now();
