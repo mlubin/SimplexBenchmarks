@@ -6,6 +6,11 @@ const Basic = 1
 const AtLower = 2
 const AtUpper = 3
 
+type InstanceData
+    A::SparseMatrixCSC{Float64,Int64}
+    Atrans::SparseMatrixCSC{Float64,Int64}
+end
+
 type IterationData
     variableState::Vector{VariableState}
     priceInput::Vector{Float64}
@@ -26,6 +31,12 @@ function readMat(f)
     SparseMatrixCSC(nrow, ncol, colptr, rowval, nzval)
 end
 
+function readInstance(f)
+    A = readMat(f)
+    Atrans = readMat(f)
+    InstanceData(A,Atrans)
+end
+
 function readIteration(f)
     variableState = convert(Vector{VariableState},[int(s) for s in split(readline(f))])
     priceInput = convert(Vector{Float64},[float64(s) for s in split(readline(f))]) 
@@ -36,7 +47,8 @@ end
 # dot product with nonbasic columns
 # assumes dense input
 #@profile begin
-function doPrice(A::SparseMatrixCSC,d::IterationData)
+function doPrice(instance::InstanceData,d::IterationData)
+    A = instance.A
     nrow,ncol = size(A)
     output = zeros(nrow+ncol)
 
@@ -74,8 +86,8 @@ end
 function doBenchmarks(inputname) 
 
     f = open(inputname,"r")
-    A = readMat(f)
-    println("Problem is $(A.m) by $(A.n) with $(length(A.nzval)) nonzeros")
+    instance = readInstance(f)
+    println("Problem is $(instance.A.m) by $(instance.A.n) with $(length(instance.A.nzval)) nonzeros")
     benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns")]
     timings = zeros(length(benchmarks))
     nruns = 0
@@ -86,7 +98,7 @@ function doBenchmarks(inputname)
         end
         for i in 1:length(benchmarks)
             func,name = benchmarks[i]
-            timings[i] += func(A,dat)
+            timings[i] += func(instance,dat)
         end
         nruns += 1
     end

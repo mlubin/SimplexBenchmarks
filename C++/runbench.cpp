@@ -18,6 +18,10 @@ struct SparseMatrixCSC {
 
 enum VariableState { Basic = 1, AtLower = 2, AtUpper = 3 };
 
+struct InstanceData {
+	SparseMatrixCSC A, Atrans;
+};
+
 struct IterationData {
 	vector<VariableState> variableState;
 	vector<double> priceInput;
@@ -77,8 +81,15 @@ SparseMatrixCSC readMat(istream &f) {
 	return A;
 }
 
-IterationData readIteration(istream &f, SparseMatrixCSC const &A) {
+InstanceData readInstance(istream &f) {
+	SparseMatrixCSC A = readMat(f);
+	SparseMatrixCSC Atrans = readMat(f);
+	return { A, Atrans };
+}
+
+IterationData readIteration(istream &f, InstanceData const &instance) {
 	
+	SparseMatrixCSC const& A = instance.A;
 	IterationData d;
 	d.valid = true;
 	string line;
@@ -114,8 +125,9 @@ IterationData readIteration(istream &f, SparseMatrixCSC const &A) {
 
 }
 
-chrono::nanoseconds doPrice(SparseMatrixCSC const& A, IterationData const& d) {
+chrono::nanoseconds doPrice(InstanceData const& instance, IterationData const& d) {
 
+	SparseMatrixCSC const &A = instance.A;
 	vector<double> output(A.nrow+A.ncol,0.);
 
 	auto t = chrono::high_resolution_clock::now();
@@ -139,8 +151,9 @@ chrono::nanoseconds doPrice(SparseMatrixCSC const& A, IterationData const& d) {
 
 }
 
-chrono::nanoseconds doPriceBoundsCheck(SparseMatrixCSC const& A, IterationData const& d) {
+chrono::nanoseconds doPriceBoundsCheck(InstanceData const& instance, IterationData const& d) {
 
+	SparseMatrixCSC const &A = instance.A;
 	vector<double> output(A.nrow+A.ncol,0.);
 
 	auto t = chrono::high_resolution_clock::now();
@@ -165,7 +178,7 @@ chrono::nanoseconds doPriceBoundsCheck(SparseMatrixCSC const& A, IterationData c
 }
 
 struct BenchmarkOperation {
-	function<chrono::nanoseconds(SparseMatrixCSC const&, IterationData const&)> func;
+	function<chrono::nanoseconds(InstanceData const&, IterationData const&)> func;
 	string name;
 };
 
@@ -175,8 +188,8 @@ int main(int argc, char**argv) {
 	assert(argc == 2);
 	ifstream f(argv[1]);
 	
-	SparseMatrixCSC A = readMat(f);
-	cout << "Problem is " << A.nrow << " by " << A.ncol << " with " << A.nzval.size() << " nonzeros\n";
+	InstanceData instance = readInstance(f);
+	cout << "Problem is " << instance.A.nrow << " by " << instance.A.ncol << " with " << instance.A.nzval.size() << " nonzeros\n";
 	
 	vector<BenchmarkOperation> benchmarks{ 
 		{ doPrice, "Matrix transpose-vector product with non-basic columns" },
@@ -186,10 +199,10 @@ int main(int argc, char**argv) {
 
 	int nruns = 0;
 	while (true) {
-		IterationData dat = readIteration(f,A);
+		IterationData dat = readIteration(f,instance);
 		if (!dat.valid) break;
 		for (int i = 0; i < benchmarks.size(); i++) {
-			timings[i] += benchmarks[i].func(A,dat);
+			timings[i] += benchmarks[i].func(instance,dat);
 		}
 		nruns++;
 	}
