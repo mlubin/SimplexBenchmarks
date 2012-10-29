@@ -4,9 +4,11 @@ Benchmarks comparing individual operations of the Simplex method for linear prog
 
 [jlSimplex]: https://github.com/mlubin/jlSimplex
 
-First, run make in C++ directory.
+## To compile
 
-To run:
+Run make in C++ directory.
+
+## To run
 
 cd GenerateData; julia test.jl
 
