@@ -1,4 +1,5 @@
 load("sparse.jl")
+load("profile.jl")
 
 typealias VariableState Int
 const Basic = 1
@@ -34,32 +35,41 @@ end
 
 # dot product with nonbasic columns
 # assumes dense input
+#@profile begin
 function doPrice(A::SparseMatrixCSC,d::IterationData)
     nrow,ncol = size(A)
     output = zeros(nrow+ncol)
 
+    # Eventually these references won't be needed, after improvements in the Julia compiler
+    # Thanks @vtjnash
+    rho = d.priceInput
+    Arv = A.rowval
+    Anz = A.nzval
+    varstate = d.variableState
+
     t = time()
    
     for i in 1:ncol
-        if (d.variableState[i] == Basic)
+        if (varstate[i] == Basic)
             continue
         end
         val = 0.
         for k in A.colptr[i]:(A.colptr[i+1]-1)
-            val += d.priceInput[A.rowval[k]]*A.nzval[k]
+            val += rho[Arv[k]]*Anz[k]
         end
         output[i] = val
     end
     for i in 1:nrow
         k = i+ncol
-        if (d.variableState[k] == Basic)
+        if (varstate[k] == Basic)
             continue
         end
-        output[k] = -d.priceInput[i]
+        output[k] = -rho[i]
     end
     
     return time() - t
 end
+#end
 
 function doBenchmarks(inputname) 
 
@@ -89,3 +99,4 @@ function doBenchmarks(inputname)
 end
 
 doBenchmarks(ARGS[1])
+#@profile report

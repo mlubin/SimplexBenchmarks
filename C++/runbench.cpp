@@ -139,6 +139,31 @@ chrono::nanoseconds doPrice(SparseMatrixCSC const& A, IterationData const& d) {
 
 }
 
+chrono::nanoseconds doPriceBoundsCheck(SparseMatrixCSC const& A, IterationData const& d) {
+
+	vector<double> output(A.nrow+A.ncol,0.);
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < A.ncol; i++) {
+		if (d.variableState.at(i) == Basic) continue;
+		double val = 0.;
+		for (int64_t k = A.colptr[i]; k < A.colptr[i+1]; k++) {
+			val += d.priceInput.at(A.rowval.at(k))*A.nzval.at(k);
+		}
+		output.at(i) = val;
+	}
+	for (int i = 0; i < A.nrow; i++) {
+		int k = i + A.ncol;
+		if (d.variableState.at(i) == Basic) continue;
+		output.at(k) = -d.priceInput[i];
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+
+}
+
 struct BenchmarkOperation {
 	function<chrono::nanoseconds(SparseMatrixCSC const&, IterationData const&)> func;
 	string name;
@@ -153,7 +178,10 @@ int main(int argc, char**argv) {
 	SparseMatrixCSC A = readMat(f);
 	cout << "Problem is " << A.nrow << " by " << A.ncol << " with " << A.nzval.size() << " nonzeros\n";
 	
-	vector<BenchmarkOperation> benchmarks{ { doPrice, "Matrix transpose-vector product with non-basic columns" } };
+	vector<BenchmarkOperation> benchmarks{ 
+		{ doPrice, "Matrix transpose-vector product with non-basic columns" },
+		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" }
+	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 
 	int nruns = 0;
