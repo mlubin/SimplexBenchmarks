@@ -30,13 +30,14 @@ pypy Python/runbench.py GenerateData/GREENBEA.SIF.dump
 
 ### C++
 - Matrix transpose-vector product with non-basic columns: 0.025541 sec
-- Matrix transpose-vector product with non-basic columns (with bounds checking): 0.035027 sec
 - Hyper-sparse matrix transpose-vector product: 0.028707 sec
-- Hyper-sparse matrix transpose-vector product (with bounds checking): 0.032742 sec
 - Two-pass dual ratio test: 0.019956 sec
-- Two-pass dual ratio test (with bounds checking): 0.018856 sec
 - Hyper-sparse two-pass dual ratio test: 0.009126 sec
+- Matrix transpose-vector product with non-basic columns (with bounds checking): 0.035027 sec
+- Hyper-sparse matrix transpose-vector product (with bounds checking): 0.032742 sec
+- Two-pass dual ratio test (with bounds checking): 0.018856 sec
 - Hyper-sparse two-pass dual ratio test (with bounds checking): 0.009577 sec
+
 
 ### Python (PyPy)
 - Matrix transpose-vector product with non-basic columns: 0.148302 sec

@@ -497,12 +497,12 @@ int main(int argc, char**argv) {
 	
 	vector<BenchmarkOperation> benchmarks{ 
 		{ doPrice, "Matrix transpose-vector product with non-basic columns" },
-		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" },
 		{ doPriceHypersparse, "Hyper-sparse matrix transpose-vector product" },
-		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix transpose-vector product (with bounds checking)" },
 		{ doTwoPassRatioTest, "Two-pass dual ratio test" },
-		{ doTwoPassRatioTestBoundsCheck, "Two-pass dual ratio test (with bounds checking)" },
 		{ doTwoPassRatioTestHypersparse, "Hyper-sparse two-pass dual ratio test" },
+		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" },
+		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix transpose-vector product (with bounds checking)" },
+		{ doTwoPassRatioTestBoundsCheck, "Two-pass dual ratio test (with bounds checking)" },
 		{ doTwoPassRatioTestHypersparseBoundsCheck, "Hyper-sparse two-pass dual ratio test (with bounds checking)" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
