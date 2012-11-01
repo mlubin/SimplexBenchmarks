@@ -466,7 +466,7 @@ chrono::nanoseconds doTwoPassRatioTestHypersparseBoundsCheck(InstanceData const&
 	int enter = -1;
 	double maxAlpha = 0.;
 	for (int k = 0; k < ncandidates; k++) {
-		int i = candidates[k];
+		int i = candidates.at(k);
 		double ratio = d.reducedCosts.at(i)/tabrow.elts.at(i);
 		if (ratio <= thetaMax) {
 			double absalpha = abs(tabrow.elts.at(i));
