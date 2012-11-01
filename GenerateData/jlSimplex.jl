@@ -420,6 +420,11 @@ function iterate(d::DualSimplexData)
         alpha = -alpha
     end
 
+    if (d.nIter % dumpEvery == 0)
+        write(f,strcat(join(d.d," "),"\n"))
+        write(f,strcat(join(alpha," "),"\n"))
+    end
+
     delta = (leaveType == Below) ? (d.x[leaveIdx] - d.data.l[leaveIdx]) : (d.x[leaveIdx] - d.data.u[leaveIdx])
     absdelta = abs(delta)
 

@@ -14,6 +14,8 @@ end
 type IterationData
     variableState::Vector{VariableState}
     priceInput::Vector{Float64}
+    reducedCosts::Vector{Float64}
+    normalizedTableauRow::Vector{Float64}
     valid::Bool
 end
 
@@ -60,8 +62,10 @@ end
 function readIteration(f)
     variableState = convert(Vector{VariableState},[int(s) for s in split(readline(f))])
     priceInput = convert(Vector{Float64},[float64(s) for s in split(readline(f))]) 
+    reducedCosts = convert(Vector{Float64},[float64(s) for s in split(readline(f))]) 
+    normalizedTableauRow = convert(Vector{Float64},[float64(s) for s in split(readline(f))]) 
     valid = (length(variableState) > 0 && length(priceInput) > 0)
-    IterationData(variableState,priceInput,valid)
+    IterationData(variableState,priceInput,reducedCosts,normalizedTableauRow,valid)
 end
 
 # dot product with nonbasic columns
@@ -98,8 +102,13 @@ function doPrice(instance::InstanceData,d::IterationData)
         end
         output[k] = -rho[i]
     end
-    
-    return time() - t
+    t = time() - t
+    # check the answer
+    err = min(abs(sum(output-d.normalizedTableauRow)),abs(sum(output+d.normalizedTableauRow)))
+    if (err > 1e-5)
+        println("Error in price: $err\n")
+    end
+    return t
 end
 
 # linear combination of rows
@@ -146,8 +155,132 @@ function doPriceHyperspase(instance::InstanceData,d::IterationData)
         outputnnz += 1
         outputnzidx[outputnnz] = row+ncol
     end
+    t = time() - t
+
+    # check the answer
+    err = min(abs(sum(outputelts-d.normalizedTableauRow)),abs(sum(outputelts+d.normalizedTableauRow)))
+    if (abs(err-1.) > 1e-5) # should be off by 1 because we keep basic columns
+        println("Error in hypersparse price: $err\n")
+    end
+
+    return t
+end
+
+# Harris stabilizing two-pass ratio test, described in Koberstein thesis
+function doTwoPassRatioTest(instance::InstanceData,d::IterationData)
+
+    nrow,ncol = size(instance.A)
+
+    candidates = zeros(Int,ncol) # don't count allocation time, assume reuse
+    ncandidates = 0
+    thetaMax = 1e25
+    pivotTol = 1e-7
+    dualTol = 1e-7
+
+    redcost = d.reducedCosts
+    varstate = d.variableState
+    tabrow = d.normalizedTableauRow
+
+    t = time()
+
+    for i in 1:(ncol+nrow)
+        thisState = varstate[i]
+        if thisState == Basic # || d.boundClass[i] == Fixed
+            continue
+        end
+        pivotElt = tabrow[i]
+        if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
+            ratio = 0.
+            if (pivotElt < 0.)
+                ratio = (redcost[i] - dualTol)/pivotElt
+            else
+                ratio = (redcost[i] + dualTol)/pivotElt
+            end
+            if (ratio < thetaMax)
+                thetaMax = ratio
+                candidates[ncandidates += 1] = i
+            end
+        end
+    end
+
+    # pass 2
+    enter = -1
+    maxAlpha = 0.
+    for k in 1:ncandidates
+        i = candidates[k]
+        ratio = redcost[i]/tabrow[i]
+        if (ratio <= thetaMax)
+            absalpha = abs(tabrow[i])
+            if (absalpha > maxAlpha)
+                maxAlpha = absalpha
+                enter = i
+            end
+        end
+    end
+    # answer in enter. -1 means unbounded
 
     return time() - t
+
+end
+
+# same as before but now tableau row is a sparse indexed vector
+function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
+
+    nrow,ncol = size(instance.A)
+
+    candidates = zeros(Int,ncol) 
+    ncandidates = 0
+    thetaMax = 1e25
+    pivotTol = 1e-7
+    dualTol = 1e-7
+
+    redcost = d.reducedCosts
+    varstate = d.variableState
+    tabrow = IndexedVector(d.normalizedTableauRow)
+    tabrowelts = tabrow.elts
+    tabrowidx = tabrow.nzidx
+
+    t = time()
+
+    for k in 1:tabrow.nnz
+        i = tabrowidx[k]
+        thisState = varstate[i]
+        if thisState == Basic # || d.boundClass[i] == Fixed
+            continue
+        end
+        pivotElt = tabrowelts[i]
+        if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
+            ratio = 0.
+            if (pivotElt < 0.)
+                ratio = (redcost[i] - dualTol)/pivotElt
+            else
+                ratio = (redcost[i] + dualTol)/pivotElt
+            end
+            if (ratio < thetaMax)
+                thetaMax = ratio
+                candidates[ncandidates += 1] = i
+            end
+        end
+    end
+
+    # pass 2
+    enter = -1
+    maxAlpha = 0.
+    for k in 1:ncandidates
+        i = candidates[k]
+        ratio = redcost[i]/tabrowelts[i]
+        if (ratio <= thetaMax)
+            absalpha = abs(tabrowelts[i])
+            if (absalpha > maxAlpha)
+                maxAlpha = absalpha
+                enter = i
+            end
+        end
+    end
+    # answer in enter. -1 means unbounded
+
+    return time() - t
+
 end
 
 function doBenchmarks(inputname) 
@@ -156,7 +289,9 @@ function doBenchmarks(inputname)
     instance = readInstance(f)
     println("Problem is $(instance.A.m) by $(instance.A.n) with $(length(instance.A.nzval)) nonzeros")
     benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns"),
-        (doPriceHyperspase,"Hyper-sparse matrix-transpose vector product")]
+        (doPriceHyperspase,"Hyper-sparse matrix-transpose vector product"),
+        (doTwoPassRatioTest,"Two-pass dual ratio test"),
+        (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test")]
     timings = zeros(length(benchmarks))
     nruns = 0
     while true

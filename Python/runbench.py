@@ -3,6 +3,8 @@ from time import time
 import sys
 
 Basic = 1
+AtLower = 2
+AtUpper = 3
 
 class SparseMatrixCSC:
 	def __init__(self,nrow,ncol,colptr,rowval,nzval):
@@ -18,10 +20,12 @@ class InstanceData:
 		self.Atrans = Atrans
 
 class IterationData:
-	def __init__(self,valid,variableState,priceInput):
+	def __init__(self,valid,variableState,priceInput,reducedCosts,normalizedTableauRow):
 		self.valid = valid
 		self.variableState = variableState
 		self.priceInput = priceInput
+		self.reducedCosts = reducedCosts
+		self.normalizedTableauRow = normalizedTableauRow
 
 class IndexedVector:
 	def __init__(self,densevec):
@@ -32,7 +36,7 @@ class IndexedVector:
 		for i in xrange(n):
 			if abs(densevec[i]) > 1e-50:
 				self.elts[i] = densevec[i]
-				self.nzidx[nnz] = i
+				self.nzidx[self.nnz] = i
 				self.nnz += 1
 
 def readMat(f):
@@ -56,8 +60,10 @@ def readInstance(f):
 def readIteration(f):
 	variableState = array('i',[int(s) for s in f.readline().strip().split()])
 	priceInput = array('d',[float(s) for s in f.readline().strip().split()])
+	reducedCosts = array('d',[float(s) for s in f.readline().strip().split()])
+	normalizedTableauRow = array('d',[float(s) for s in f.readline().strip().split()])
 	valid = len(variableState) > 0 and len(priceInput) > 0
-	return IterationData(valid,variableState,priceInput)
+	return IterationData(valid,variableState,priceInput, reducedCosts, normalizedTableauRow)
 
 
 def doPrice(instance,d):
@@ -121,12 +127,107 @@ def doPriceHypersparse(instance,d):
 
 	return time()-t
 
+def doTwoPassRatioTest(instance,d):
+
+	nrow,ncol = instance.A.nrow,instance.A.ncol
+	candidates = array('i',ncol*[0])
+	ncandidates = 0
+	thetaMax = 1e25
+	pivotTol = 1e-7
+	dualTol = 1e-7
+
+	redcost = d.reducedCosts
+	varstate = d.variableState
+	tabrow = d.normalizedTableauRow
+
+	t = time()
+
+	for i in xrange(ncol+nrow):
+		thisState = varstate[i]
+		if thisState == Basic: continue
+		pivotElt = tabrow[i]
+		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
+			ratio = 0.
+			if (pivotElt < 0.):
+				ratio = (redcost[i] - dualTol)/pivotElt
+			else:
+				ratio = (redcost[i] + dualTol)/pivotElt
+			if (ratio < thetaMax):
+				thetaMax = ratio
+				candidates[ncandidates] = i
+				ncandidates += 1
+
+	enter = -1
+	maxAlpha = 0.
+
+	for k in xrange(ncandidates):
+		i = candidates[k]
+		ratio = redcost[i]/tabrow[i]
+		if (ratio <= thetaMax):
+			absalpha = abs(tabrow[i])
+			if (absalpha > maxAlpha):
+				maxAlpha = absalpha
+				enter = i
+	
+	return time()-t
+
+def doTwoPassRatioTestHypersparse(instance,d):
+
+	nrow,ncol = instance.A.nrow,instance.A.ncol
+	candidates = array('i',ncol*[0])
+	ncandidates = 0
+	thetaMax = 1e25
+	pivotTol = 1e-7
+	dualTol = 1e-7
+
+	redcost = d.reducedCosts
+	varstate = d.variableState
+	tabrow = IndexedVector(d.normalizedTableauRow)
+	tabrowelts = tabrow.elts
+	tabrowidx = tabrow.nzidx
+
+	t = time()
+
+	for k in xrange(tabrow.nnz):
+		i = tabrowidx[k]
+		thisState = varstate[i]
+		if thisState == Basic: continue
+		pivotElt = tabrowelts[i]
+		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
+			ratio = 0.
+			if (pivotElt < 0.):
+				ratio = (redcost[i] - dualTol)/pivotElt
+			else:
+				ratio = (redcost[i] + dualTol)/pivotElt
+			if (ratio < thetaMax):
+				thetaMax = ratio
+				candidates[ncandidates] = i
+				ncandidates += 1
+
+	enter = -1
+	maxAlpha = 0.
+
+	for k in xrange(ncandidates):
+		i = candidates[k]
+		ratio = redcost[i]/tabrowelts[i]
+		if (ratio <= thetaMax):
+			absalpha = abs(tabrowelts[i])
+			if (absalpha > maxAlpha):
+				maxAlpha = absalpha
+				enter = i
+	
+	return time()-t
+
+
 if __name__ == "__main__":
 	f = open(sys.argv[1],'r')
 	instance = readInstance(f)
 	print "Problem is",instance.A.nrow,"by",instance.A.ncol,"with",len(instance.A.nzval),"nonzeros"
 	benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns"),
-			(doPrice,"Hyper-sparse matrix transpose-vector product")]
+			(doPrice,"Hyper-sparse matrix transpose-vector product"),
+			(doTwoPassRatioTest,"Two-pass dual ratio test"),
+			(doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
+			]
 
 	timings = len(benchmarks)*[0.]
 	nruns = 0

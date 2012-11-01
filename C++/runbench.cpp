@@ -25,7 +25,7 @@ struct InstanceData {
 
 struct IterationData {
 	vector<VariableState> variableState;
-	vector<double> priceInput;
+	vector<double> priceInput, reducedCosts, normalizedTableauRow;
 	bool valid;
 };
 
@@ -102,6 +102,22 @@ InstanceData readInstance(istream &f) {
 	return { A, Atrans };
 }
 
+bool readVector(string const& line, vector<double> &v, int len) {
+	istringstream ss(line);
+		
+	for (int i = 0; i < len; i++) {
+		double x;
+		ss >> x;
+		if (ss.fail()) {
+			return false;
+		}
+		v.push_back(x);
+	}
+
+	return true;
+
+}
+
 IterationData readIteration(istream &f, InstanceData const &instance) {
 	
 	SparseMatrixCSC const& A = instance.A;
@@ -123,19 +139,14 @@ IterationData readIteration(istream &f, InstanceData const &instance) {
 		
 	}
 	getline(f,line);
-	{
-		istringstream ss(line);
-		
-		for (int i = 0; i < A.nrow; i++) {
-			double x;
-			ss >> x;
-			if (ss.fail()) {
-				d.valid = false; return d;
-			}
-			d.priceInput.push_back(x);
-		}
-	}
+	d.valid = d.valid && readVector(line, d.priceInput, A.nrow);
 
+	getline(f,line);
+	d.valid = d.valid && readVector(line, d.reducedCosts, A.ncol+A.nrow);
+
+	getline(f,line);
+	d.valid = d.valid && readVector(line, d.normalizedTableauRow, A.ncol+A.nrow);
+	
 	return d;
 
 }
@@ -265,6 +276,211 @@ chrono::nanoseconds doPriceHypersparseBoundsCheck(InstanceData const& instance, 
 
 }
 
+
+chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<int> candidates(ncol);
+	int ncandidates = 0;
+	double thetaMax = 1e25;
+	const double pivotTol = 1e-7, dualTol = 1e-7;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < nrow+ncol; i++) {
+		VariableState thisState = d.variableState[i];
+		if (thisState == Basic) continue;
+		double pivotElt = d.normalizedTableauRow[i];
+		if ( (thisState == AtLower && pivotElt > pivotTol) ||
+		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			double ratio;
+			if (pivotElt < 0.) {
+				ratio = (d.reducedCosts[i] - dualTol)/pivotElt;
+			} else {
+				ratio = (d.reducedCosts[i] + dualTol)/pivotElt;
+			}
+			if (ratio < thetaMax) {
+				thetaMax = ratio;
+				candidates[ncandidates++] = i;
+			}
+		}
+	}
+
+	int enter = -1;
+	double maxAlpha = 0.;
+	for (int k = 0; k < ncandidates; k++) {
+		int i = candidates[k];
+		double ratio = d.reducedCosts[i]/d.normalizedTableauRow[i];
+		if (ratio <= thetaMax) {
+			double absalpha = abs(d.normalizedTableauRow[i]);
+			if (absalpha > maxAlpha) {
+				maxAlpha = absalpha;
+				enter = i;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+chrono::nanoseconds doTwoPassRatioTestBoundsCheck(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<int> candidates(ncol);
+	int ncandidates = 0;
+	double thetaMax = 1e25;
+	const double pivotTol = 1e-7, dualTol = 1e-7;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < nrow+ncol; i++) {
+		VariableState thisState = d.variableState.at(i);
+		if (thisState == Basic) continue;
+		double pivotElt = d.normalizedTableauRow.at(i);
+		if ( (thisState == AtLower && pivotElt > pivotTol) ||
+		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			double ratio;
+			if (pivotElt < 0.) {
+				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
+			} else {
+				ratio = (d.reducedCosts.at(i) + dualTol)/pivotElt;
+			}
+			if (ratio < thetaMax) {
+				thetaMax = ratio;
+				candidates.at(ncandidates++) = i;
+			}
+		}
+	}
+
+	int enter = -1;
+	double maxAlpha = 0.;
+	for (int k = 0; k < ncandidates; k++) {
+		int i = candidates.at(k);
+		double ratio = d.reducedCosts.at(i)/d.normalizedTableauRow.at(i);
+		if (ratio <= thetaMax) {
+			double absalpha = abs(d.normalizedTableauRow.at(i));
+			if (absalpha > maxAlpha) {
+				maxAlpha = absalpha;
+				enter = i;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<int> candidates(ncol);
+	int ncandidates = 0;
+	double thetaMax = 1e25;
+	const double pivotTol = 1e-7, dualTol = 1e-7;
+
+	IndexedVector tabrow(d.normalizedTableauRow);
+	
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int k = 0; k < tabrow.nnz; k++) {
+		int i = tabrow.nzidx[k];
+		VariableState thisState = d.variableState[i];
+		if (thisState == Basic) continue;
+		double pivotElt = tabrow.elts[i];
+		if ( (thisState == AtLower && pivotElt > pivotTol) ||
+		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			double ratio;
+			if (pivotElt < 0.) {
+				ratio = (d.reducedCosts[i] - dualTol)/pivotElt;
+			} else {
+				ratio = (d.reducedCosts[i] + dualTol)/pivotElt;
+			}
+			if (ratio < thetaMax) {
+				thetaMax = ratio;
+				candidates[ncandidates++] = i;
+			}
+		}
+	}
+
+	int enter = -1;
+	double maxAlpha = 0.;
+	for (int k = 0; k < ncandidates; k++) {
+		int i = candidates[k];
+		double ratio = d.reducedCosts[i]/tabrow.elts[i];
+		if (ratio <= thetaMax) {
+			double absalpha = abs(tabrow.elts[i]);
+			if (absalpha > maxAlpha) {
+				maxAlpha = absalpha;
+				enter = i;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+chrono::nanoseconds doTwoPassRatioTestHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
+
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<int> candidates(ncol);
+	int ncandidates = 0;
+	double thetaMax = 1e25;
+	const double pivotTol = 1e-7, dualTol = 1e-7;
+
+	IndexedVector tabrow(d.normalizedTableauRow);
+	
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int k = 0; k < tabrow.nnz; k++) {
+		int i = tabrow.nzidx.at(k);
+		VariableState thisState = d.variableState.at(i);
+		if (thisState == Basic) continue;
+		double pivotElt = tabrow.elts.at(i);
+		if ( (thisState == AtLower && pivotElt > pivotTol) ||
+		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			double ratio;
+			if (pivotElt < 0.) {
+				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
+			} else {
+				ratio = (d.reducedCosts.at(i) + dualTol)/pivotElt;
+			}
+			if (ratio < thetaMax) {
+				thetaMax = ratio;
+				candidates.at(ncandidates++) = i;
+			}
+		}
+	}
+
+	int enter = -1;
+	double maxAlpha = 0.;
+	for (int k = 0; k < ncandidates; k++) {
+		int i = candidates[k];
+		double ratio = d.reducedCosts.at(i)/tabrow.elts.at(i);
+		if (ratio <= thetaMax) {
+			double absalpha = abs(tabrow.elts.at(i));
+			if (absalpha > maxAlpha) {
+				maxAlpha = absalpha;
+				enter = i;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
 struct BenchmarkOperation {
 	function<chrono::nanoseconds(InstanceData const&, IterationData const&)> func;
 	string name;
@@ -284,6 +500,10 @@ int main(int argc, char**argv) {
 		{ doPriceBoundsCheck, "Matrix transpose-vector product with non-basic columns (with bounds checking)" },
 		{ doPriceHypersparse, "Hyper-sparse matrix transpose-vector product" },
 		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix transpose-vector product (with bounds checking)" },
+		{ doTwoPassRatioTest, "Two-pass dual ratio test" },
+		{ doTwoPassRatioTestBoundsCheck, "Two-pass dual ratio test (with bounds checking)" },
+		{ doTwoPassRatioTestHypersparse, "Hyper-sparse two-pass dual ratio test" },
+		{ doTwoPassRatioTestHypersparseBoundsCheck, "Hyper-sparse two-pass dual ratio test (with bounds checking)" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 
