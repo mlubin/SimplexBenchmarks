@@ -190,7 +190,7 @@ int main(int argc, char**argv) {
 		nruns++;
 	}
 
-	cout << nruns << " simulated iterations. Total timings:\n";
+	cout << nruns << " simulated iterations\n";
 	for (size_t i = 0; i < benchmarks.size(); i++) {
 		cout << benchmarks[i].name << ": " << timings[i].count()/1000000000. << " sec\n";
 	}

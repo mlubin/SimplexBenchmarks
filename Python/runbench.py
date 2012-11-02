@@ -240,7 +240,7 @@ if __name__ == "__main__":
 			timings[i] += func(instance,dat)
 		nruns += 1
 	
-	print nruns,"simulated iterations. Total timings:"
+	print nruns,"simulated iterations"
 	for i in xrange(len(benchmarks)):
 		print "%s: %f sec" % (benchmarks[i][1],timings[i])
 	

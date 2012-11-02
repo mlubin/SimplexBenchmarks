@@ -306,7 +306,7 @@ function doBenchmarks(inputname)
         nruns += 1
     end
 
-    println("$nruns simulated iterations. Total timings:")
+    println("$nruns simulated iterations")
     for i in 1:length(benchmarks)
         println("$(benchmarks[i][2]): $(timings[i]) sec")
     end
