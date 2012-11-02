@@ -158,8 +158,8 @@ function doPriceHyperspase(instance::InstanceData,d::IterationData)
     t = time() - t
 
     # check the answer
-    err = min(abs(sum(outputelts-d.normalizedTableauRow)),abs(sum(outputelts+d.normalizedTableauRow)))
-    if (abs(err-1.) > 1e-5) # should be off by 1 because we keep basic columns
+    err = min(abs(sum(outputelts-d.normalizedTableauRow)-1.),abs(sum(outputelts+d.normalizedTableauRow)-1.)) # should be off by 1 because we keep basic columns
+    if (abs(err) > 1e-5) 
         println("Error in hypersparse price: $err\n")
     end
 
