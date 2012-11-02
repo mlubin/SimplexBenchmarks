@@ -61,7 +61,7 @@ for (shortname,o) in operations
 end
 
 for (n,i) in models
-    print("$n:\n\t")
+    print("$n (relative to C++bnd):\n\t")
     for (language,command) in benchmarks
         print("$language\t")
     end
@@ -82,7 +82,7 @@ for (n,i) in models
     println()
 end
 
-print("Geometric mean:\n\t")
+print("Geometric mean (relative to C++bnd):\n\t")
 for (language,command) in benchmarks
     print("$language\t")
 end
