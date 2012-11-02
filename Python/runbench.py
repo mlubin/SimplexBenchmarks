@@ -223,8 +223,8 @@ if __name__ == "__main__":
 	f = open(sys.argv[1],'r')
 	instance = readInstance(f)
 	print "Problem is",instance.A.nrow,"by",instance.A.ncol,"with",len(instance.A.nzval),"nonzeros"
-	benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns"),
-			(doPrice,"Hyper-sparse matrix transpose-vector product"),
+	benchmarks = [(doPrice,"Matrix-transpose-vector product with non-basic columns"),
+			(doPrice,"Hyper-sparse matrix-transpose-vector product"),
 			(doTwoPassRatioTest,"Two-pass dual ratio test"),
 			(doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
 			]

@@ -288,8 +288,8 @@ function doBenchmarks(inputname)
     f = open(inputname,"r")
     instance = readInstance(f)
     println("Problem is $(instance.A.m) by $(instance.A.n) with $(length(instance.A.nzval)) nonzeros")
-    benchmarks = [(doPrice,"Matrix transpose-vector product with non-basic columns"),
-        (doPriceHyperspase,"Hyper-sparse matrix-transpose vector product"),
+    benchmarks = [(doPrice,"Matrix-transpose-vector product with non-basic columns"),
+        (doPriceHyperspase,"Hyper-sparse matrix-transpose-vector product"),
         (doTwoPassRatioTest,"Two-pass dual ratio test"),
         (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test")]
     timings = zeros(length(benchmarks))

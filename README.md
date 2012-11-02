@@ -10,37 +10,31 @@ Run make in C++ directory.
 
 ## To run
 
-cd GenerateData; julia test.jl
-
-cd ..;
-
-julia Julia/runbench.jl GenerateData/GREENBEA.SIF.dump
-
-C++/runbench GenerateData/GREENBEA.SIF.dump
-
-pypy Python/runbench.py GenerateData/GREENBEA.SIF.dump
+julia runBenchmarks.jl
 
 ## Timings on a laptop (Intel i5-3320M):
 
-### Julia
-- Matrix transpose-vector product with non-basic columns: 0.05101799964904785 sec
-- Hyper-sparse matrix-transpose vector product: 0.04227614402770996 sec
-- Two-pass dual ratio test: 0.028381824493408203 sec
-- Hyper-sparse two-pass dual ratio test: 0.015252113342285156 sec
+Geometric mean:
 
-### C++
-- Matrix transpose-vector product with non-basic columns: 0.025541 sec
-- Hyper-sparse matrix transpose-vector product: 0.028707 sec
-- Two-pass dual ratio test: 0.019956 sec
-- Hyper-sparse two-pass dual ratio test: 0.009126 sec
-- Matrix transpose-vector product with non-basic columns (with bounds checking): 0.035027 sec
-- Hyper-sparse matrix transpose-vector product (with bounds checking): 0.032742 sec
-- Two-pass dual ratio test (with bounds checking): 0.018856 sec
-- Hyper-sparse two-pass dual ratio test (with bounds checking): 0.009577 sec
+	Julia	C++	C++bnd	PyPy	Python
+
+mtvec:	1.31	0.76	1.00	4.25	86.33	
+
+smtvec:	1.20	0.86	1.00	22.49	577.88	
+
+rto2:	1.49	0.83	1.00	5.18	56.64	
+
+srto2:	1.45	0.89	1.00	22.07	45.66	
 
 
-### Python (PyPy)
-- Matrix transpose-vector product with non-basic columns: 0.148302 sec
-- Hyper-sparse matrix transpose-vector product: 0.126729 sec
-- Two-pass dual ratio test: 0.106293 sec
-- Hyper-sparse two-pass dual ratio test: 0.061984 sec
+Key:
+
+mtvec = Matrix-transpose-vector product with non-basic columns
+
+smtvec = Hyper-sparse matrix-transpose-vector product
+
+rto2 = Two-pass dual ratio test
+
+srto2 = Hyper-sparse two-pass dual ratio test
+
+C++bnd = C++ with bounds checking

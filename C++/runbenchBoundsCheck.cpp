@@ -1,6 +1,6 @@
 #include "common.cpp"
 
-chrono::nanoseconds doPrice(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doPriceBoundsCheck(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	vector<double> output(A.nrow+A.ncol,0.);
@@ -8,17 +8,17 @@ chrono::nanoseconds doPrice(InstanceData const& instance, IterationData const& d
 	auto t = chrono::high_resolution_clock::now();
 
 	for (int i = 0; i < A.ncol; i++) {
-		if (d.variableState[i] == Basic) continue;
+		if (d.variableState.at(i) == Basic) continue;
 		double val = 0.;
 		for (int64_t k = A.colptr[i]; k < A.colptr[i+1]; k++) {
-			val += d.priceInput[A.rowval[k]]*A.nzval[k];
+			val += d.priceInput.at(A.rowval.at(k))*A.nzval.at(k);
 		}
-		output[i] = val;
+		output.at(i) = val;
 	}
 	for (int i = 0; i < A.nrow; i++) {
 		int k = i + A.ncol;
-		if (d.variableState[i] == Basic) continue;
-		output[k] = -d.priceInput[i];
+		if (d.variableState.at(i) == Basic) continue;
+		output.at(k) = -d.priceInput.at(i);
 	}
 
 	auto t2 = chrono::high_resolution_clock::now();
@@ -26,8 +26,7 @@ chrono::nanoseconds doPrice(InstanceData const& instance, IterationData const& d
 
 }
 
-
-chrono::nanoseconds doPriceHypersparse(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doPriceHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	SparseMatrixCSC const &Atrans = instance.Atrans;
@@ -41,21 +40,20 @@ chrono::nanoseconds doPriceHypersparse(InstanceData const& instance, IterationDa
 	auto t = chrono::high_resolution_clock::now();
 
 	for (int k = 0; k < rho.nnz; k++) {
-		int row = rho.nzidx[k];
-		double elt = rho.elts[row];
+		int row = rho.nzidx.at(k);
+		double elt = rho.elts.at(row);
 		for (int64_t j = Atrans.colptr[row]; j < Atrans.colptr[row+1]; j++) {
-			int idx = Atrans.rowval[j];
-			if (outputelts[idx] != 0.) {
-				outputelts[idx] += elt*Atrans.nzval[j];
+			int idx = Atrans.rowval.at(j);
+			if (outputelts.at(idx) != 0.) {
+				outputelts.at(idx) += elt*Atrans.nzval.at(j);
 				//if (outputelts[idx] == 0.) outputelts[idx] = 1e-50;
 			} else {
-				outputelts[idx] = elt*Atrans.nzval[j];
-				assert(outputelts[idx] != 0.);
-				outputnzidx[outputnnz++] = idx;
+				outputelts.at(idx) = elt*Atrans.nzval.at(j);
+				outputnzidx.at(outputnnz++) = idx;
 			}
 		}
-		outputelts[row+A.ncol] = -elt;
-		outputnzidx[outputnnz++] = row+A.ncol;
+		outputelts.at(row+A.ncol) = -elt;
+		outputnzidx.at(outputnnz++) = row+A.ncol;
 	}
 
 
@@ -64,9 +62,7 @@ chrono::nanoseconds doPriceHypersparse(InstanceData const& instance, IterationDa
 
 }
 
-
-
-chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doTwoPassRatioTestBoundsCheck(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	int nrow = A.nrow, ncol = A.ncol;
@@ -79,20 +75,20 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 	auto t = chrono::high_resolution_clock::now();
 
 	for (int i = 0; i < nrow+ncol; i++) {
-		VariableState thisState = d.variableState[i];
+		VariableState thisState = d.variableState.at(i);
 		if (thisState == Basic) continue;
-		double pivotElt = d.normalizedTableauRow[i];
+		double pivotElt = d.normalizedTableauRow.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
 			double ratio;
 			if (pivotElt < 0.) {
-				ratio = (d.reducedCosts[i] - dualTol)/pivotElt;
+				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
 			} else {
-				ratio = (d.reducedCosts[i] + dualTol)/pivotElt;
+				ratio = (d.reducedCosts.at(i) + dualTol)/pivotElt;
 			}
 			if (ratio < thetaMax) {
 				thetaMax = ratio;
-				candidates[ncandidates++] = i;
+				candidates.at(ncandidates++) = i;
 			}
 		}
 	}
@@ -100,10 +96,10 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 	int enter = -1;
 	double maxAlpha = 0.;
 	for (int k = 0; k < ncandidates; k++) {
-		int i = candidates[k];
-		double ratio = d.reducedCosts[i]/d.normalizedTableauRow[i];
+		int i = candidates.at(k);
+		double ratio = d.reducedCosts.at(i)/d.normalizedTableauRow.at(i);
 		if (ratio <= thetaMax) {
-			double absalpha = abs(d.normalizedTableauRow[i]);
+			double absalpha = abs(d.normalizedTableauRow.at(i));
 			if (absalpha > maxAlpha) {
 				maxAlpha = absalpha;
 				enter = i;
@@ -115,8 +111,7 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
 }
 
-
-chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doTwoPassRatioTestHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	int nrow = A.nrow, ncol = A.ncol;
@@ -132,21 +127,21 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	auto t = chrono::high_resolution_clock::now();
 
 	for (int k = 0; k < tabrow.nnz; k++) {
-		int i = tabrow.nzidx[k];
-		VariableState thisState = d.variableState[i];
+		int i = tabrow.nzidx.at(k);
+		VariableState thisState = d.variableState.at(i);
 		if (thisState == Basic) continue;
-		double pivotElt = tabrow.elts[i];
+		double pivotElt = tabrow.elts.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
 			double ratio;
 			if (pivotElt < 0.) {
-				ratio = (d.reducedCosts[i] - dualTol)/pivotElt;
+				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
 			} else {
-				ratio = (d.reducedCosts[i] + dualTol)/pivotElt;
+				ratio = (d.reducedCosts.at(i) + dualTol)/pivotElt;
 			}
 			if (ratio < thetaMax) {
 				thetaMax = ratio;
-				candidates[ncandidates++] = i;
+				candidates.at(ncandidates++) = i;
 			}
 		}
 	}
@@ -154,10 +149,10 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	int enter = -1;
 	double maxAlpha = 0.;
 	for (int k = 0; k < ncandidates; k++) {
-		int i = candidates[k];
-		double ratio = d.reducedCosts[i]/tabrow.elts[i];
+		int i = candidates.at(k);
+		double ratio = d.reducedCosts.at(i)/tabrow.elts.at(i);
 		if (ratio <= thetaMax) {
-			double absalpha = abs(tabrow.elts[i]);
+			double absalpha = abs(tabrow.elts.at(i));
 			if (absalpha > maxAlpha) {
 				maxAlpha = absalpha;
 				enter = i;
@@ -169,9 +164,6 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
 }
 
-
-
-
 int main(int argc, char**argv) {
 
 	assert(argc == 2);
@@ -181,10 +173,10 @@ int main(int argc, char**argv) {
 	cout << "Problem is " << instance.A.nrow << " by " << instance.A.ncol << " with " << instance.A.nzval.size() << " nonzeros\n";
 	
 	vector<BenchmarkOperation> benchmarks{ 
-		{ doPrice, "Matrix-transpose-vector product with non-basic columns" },
-		{ doPriceHypersparse, "Hyper-sparse matrix-transpose-vector product" },
-		{ doTwoPassRatioTest, "Two-pass dual ratio test" },
-		{ doTwoPassRatioTestHypersparse, "Hyper-sparse two-pass dual ratio test" },
+		{ doPriceBoundsCheck, "Matrix-transpose-vector product with non-basic columns" },
+		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix-transpose-vector product" },
+		{ doTwoPassRatioTestBoundsCheck, "Two-pass dual ratio test" },
+		{ doTwoPassRatioTestHypersparseBoundsCheck, "Hyper-sparse two-pass dual ratio test" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 

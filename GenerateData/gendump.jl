@@ -14,18 +14,17 @@ function dumpHead(d,f)
 
 end
 
-function doTests()
-
-    mpsfile = "GREENBEA.SIF"
+function doTests(mpsfile,dump)
     global f = open("$(mpsfile).dump","w")
-    global dumpEvery = 10
+    global dumpEvery = dump
     d = DualSimplexData(LPDataFromMPS(mpsfile));
     dumpHead(d,f)
     @time go(d)
     close(f)
 
-    println("Now with glpk:")
-    SolveMPSWithGLPK(mpsfile)
+    #println("Now with glpk:")
+    #SolveMPSWithGLPK(mpsfile)
 end
 
-doTests()
+@assert length(ARGS) == 2
+doTests(ARGS[1],int(ARGS[2]))
