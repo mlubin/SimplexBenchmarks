@@ -13,6 +13,7 @@ cd("..")
 
 benchmarks = [("Julia",["julia","Julia/runbench.jl"]),("C++",["C++/runbench"]),
             ("C++bnd",["C++/runbenchBoundsCheck"]),
+            ("matlab",["julia","MATLAB/runmatlab.jl"]),
             ("PyPy",["pypy","Python/runbench.py"]),
             ("Python",["python","Python/runbench.py"])]
 
