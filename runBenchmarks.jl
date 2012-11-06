@@ -1,5 +1,5 @@
 
-models = [("greenbea",10),("stocfor3",40)]
+models = [("greenbea",10),("stocfor3",40),("ken-13",200)]
 
 # dump simplex data
 cd("GenerateData")
@@ -65,6 +65,7 @@ for (n,i) in models
     for (language,command) in benchmarks
         print("$language\t")
     end
+    print("Basetime")
     println()
     for (shortname,o) in operations
         print("$shortname:\t")
@@ -76,6 +77,7 @@ for (n,i) in models
             # add to mean
             data[map(row->(row.model == "mean" && row.operation == shortname && row.language == language), data)][1].t *= t
         end
+        @printf("%.5f",baseline)
         println()
     end
     println()
