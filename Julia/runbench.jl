@@ -114,7 +114,7 @@ end
 # linear combination of rows
 # costly to check basic/nonbasic status here. 
 # instead, ignore and assume will be checked later
-function doPriceHyperspase(instance::InstanceData,d::IterationData)
+function doPriceHypersparse(instance::InstanceData,d::IterationData)
     A = instance.A
     Atrans = instance.Atrans
     nrow,ncol = size(A)
@@ -289,7 +289,7 @@ function doBenchmarks(inputname)
     instance = readInstance(f)
     println("Problem is $(instance.A.m) by $(instance.A.n) with $(length(instance.A.nzval)) nonzeros")
     benchmarks = [(doPrice,"Matrix-transpose-vector product with non-basic columns"),
-        (doPriceHyperspase,"Hyper-sparse matrix-transpose-vector product"),
+        (doPriceHypersparse,"Hyper-sparse matrix-transpose-vector product"),
         (doTwoPassRatioTest,"Two-pass dual ratio test"),
         (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test")]
     timings = zeros(length(benchmarks))
