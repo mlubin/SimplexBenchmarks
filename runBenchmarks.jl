@@ -31,24 +31,37 @@ end
 
 data = Array(ExperimentRow,0)
 
+# repeat this many times, take minimum time for each operation
+nrepeat = 3
+
 for (n,i) in models
     for (language,command) in benchmarks
-        output = readall(`$command GenerateData/$(n).gz.dump`)
-        lines = split(output,"\n")
-        println("$(lines[1])\n$(lines[2])")
-        offset = 3 # 3rd line has the result of the operations
-        for (shortname,o) in operations
-            l = split(lines[offset]," ")
+        d = Dict()
+        for k in 1:nrepeat
+            output = readall(`$command GenerateData/$(n).gz.dump`)
+            lines = split(output,"\n")
+            println("$(lines[1])\n$(lines[2])")
+            offset = 3 # 3rd line has the result of the operations
+            for (shortname,o) in operations
+                l = split(lines[offset]," ")
 
-            first,last = search(lines[offset],o)
-            if (first == last || l[end] != "sec")
-                println("Expected $shortname in line:\n$(lines[offset])")
+                first,last = search(lines[offset],o)
+                if (first == last || l[end] != "sec")
+                    println("Expected $shortname in line:\n$(lines[offset])")
+                end
+                @assert l[end] == "sec"
+                @assert first != last
+                t = float(l[end-1])
+                if k > 1
+                    d[o] = min(d[o],t)
+                else
+                    d[o] = t
+                end
+                offset += 1
             end
-            @assert l[end] == "sec"
-            @assert first != last
-            t = float(l[end-1])
-            push(data,ExperimentRow(n,language,shortname,t))
-            offset += 1
+        end
+        for (shortname,o) in operations
+            push(data,ExperimentRow(n,language,shortname,d[o]))
         end
     end
     println()
