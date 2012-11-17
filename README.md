@@ -10,9 +10,9 @@ Run ```make``` in ```C++``` directory.
 
 ## To run
 
-Be sure to have, ```julia```, ```pypy``` and ```matlab``` in your path. If these aren't present, the code will hang (this is a **[bug]** in Julia). Then run: 
+Be sure to have ```julia```, ```pypy``` and ```matlab``` in your path. If these aren't present, the code will hang (this is a **[bug]**). 
 
-```julia runBenchmarks.jl```
+Then run: ```julia runBenchmarks.jl```
 
 [bug]: https://github.com/JuliaLang/julia/issues/1514
 
