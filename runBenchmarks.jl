@@ -15,7 +15,7 @@ benchmarks = [("Julia",["julia","Julia/runbench.jl"]),("C++",["C++/runbench"]),
             ("C++bnd",["C++/runbenchBoundsCheck"]),
             ("matlab",["julia","MATLAB/runmatlab.jl"]),
             ("PyPy",["pypy","Python/runbench.py"]),
-            ("Python",["python","Python/runbench.py"])]
+            ("Python",["python2.7","Python/runbench.py"])]
 
 operations = [("mtvec","Matrix-transpose-vector product with non-basic columns"),
     ("smtvec","Hyper-sparse matrix-transpose-vector product"),
