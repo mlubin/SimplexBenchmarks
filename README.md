@@ -15,7 +15,7 @@ julia runBenchmarks.jl
 ## Timings on a laptop (Intel i5-3320M):
 
 	Geometric mean (relative to C++bnd):
-		Julia	C++	C++bnd	matlab	PyPy	Python	
+			Julia	C++		C++bnd	matlab	PyPy	Python	
 	mtvec:	1.44	0.76	1.00	8.72	4.11	82.12	
 	smtvec:	1.29	0.90	1.00	5.79	19.20	417.16	
 	rto2:	1.51	0.84	1.00	19.75	4.03	49.91	
