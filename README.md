@@ -6,11 +6,15 @@ Benchmarks comparing individual operations of the Simplex method for linear prog
 
 ## To compile
 
-Run make in C++ directory.
+Run ```make``` in ```C++``` directory.
 
 ## To run
 
-julia runBenchmarks.jl
+Be sure to have, ```julia```, ```pypy``` and ```matlab``` in your path. If these aren't present, the code will hang (this is a **[bug]** in Julia). Then run: 
+
+```julia runBenchmarks.jl```
+
+[bug]: https://github.com/JuliaLang/julia/issues/1514
 
 ## Timings on a laptop (Intel i5-3320M):
 
