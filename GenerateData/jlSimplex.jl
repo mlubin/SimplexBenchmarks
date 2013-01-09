@@ -1,5 +1,5 @@
-load("pfi.jl")
-load("glpk.jl") # for reading MPS
+load("pfi")
+load("glpk") # for reading MPS
 #load("profile.jl")
 
 typealias ConstraintType Int # why no enum...
@@ -319,7 +319,7 @@ function dualRatioTest(d::DualSimplexData,alpha2)
             continue
         end
         #print("d: $(d.d[i]) alpha: $(alpha2[i])\n")
-        if ((d.variableState[i] == AtLower && alpha2[i] > pivotTol) || (d.variableState[i] == AtUpper && alpha2[i] < -pivotTol) || (d.variableState[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol)))
+        if ((d.variableState[i] == AtLower && alpha2[i] > pivotTol) || (d.variableState[i] == AtUpper && alpha2[i] < -pivotTol) || (d.data.boundClass[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol)))
             ratio = 0.
             if (alpha2[i] < 0.)
                 ratio = (d.d[i] - d.dualTol)/alpha2[i]
@@ -456,11 +456,14 @@ function iterate(d::DualSimplexData)
     t = time()
     updateDuals(d,alpha,leaveIdx,enterIdx,thetad)
     d.timings.updateiters += time() - t
-
+    rhs = zeros(nrow)
     if (enterIdx <= ncol) # structural
-        rhs = convert(Matrix{Float64},d.data.A[:,enterIdx])[:,1]
+        rowval = d.data.A.rowval
+        nzval = d.data.A.nzval
+        for k in d.data.A.colptr[enterIdx]:(d.data.A.colptr[enterIdx+1]-1)
+            rhs[rowval[k]] = nzval[k]
+        end
     else
-        rhs = zeros(nrow)
         rhs[enterIdx - ncol] = -1.
     end
     

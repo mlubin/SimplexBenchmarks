@@ -1,7 +1,5 @@
-import Base.Ac_ldiv_B, Base.(\), Base.dot
-load("sparse.jl")
-load("linalg_sparse.jl")
-load("suitesparse.jl")
+load("suitesparse")
+import Base.Ac_ldiv_B, Base.(\), Base.dot, Base.copy, Base.show
 
 type PackedEtaVector
     elts::Vector{Float64}
@@ -62,7 +60,7 @@ type PFIManager
 end
 
 function PFIManager(mat)
-    return PFIManager(UmfpackLU!(mat),0,Array(PackedEtaVector,1000))
+    return PFIManager(SuiteSparse.UmfpackLU!(mat),0,Array(PackedEtaVector,1000))
 end
 
 function replaceColumn(pfi::PFIManager,tableauColumn::Vector{Float64},pivotalIndex)
@@ -81,11 +79,8 @@ function (\)(pfi::PFIManager,v::Vector{Float64})
 end
 
 function Ac_ldiv_B(pfi::PFIManager,v::Vector{Float64})
-    # what's the syntax for a range with negative increments?
-    i = pfi.npfi
-    while i > 0
+    for i = pfi.npfi:-1:1
         applyRowEta(pfi.etas[i],v)
-        i -= 1
     end
 
     return pfi.origFactor'\v
