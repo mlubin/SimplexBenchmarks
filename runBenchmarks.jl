@@ -59,7 +59,7 @@ for (n,i) in models
             end
         end
         for (shortname,o) in operations
-            push(data,ExperimentRow(n,language,shortname,d[o]))
+            push!(data,ExperimentRow(n,language,shortname,d[o]))
         end
     end
     println()
@@ -68,7 +68,7 @@ end
 println()
 for (shortname,o) in operations
     for (language,command) in benchmarks
-        push(data,ExperimentRow("mean",language,shortname,1.))
+        push!(data,ExperimentRow("mean",language,shortname,1.))
     end
 end
 
