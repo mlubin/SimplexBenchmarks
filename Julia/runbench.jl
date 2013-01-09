@@ -1,5 +1,4 @@
-load("sparse.jl")
-load("profile.jl")
+require("profile")
 
 typealias VariableState Int
 const Basic = 1
