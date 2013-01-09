@@ -47,10 +47,8 @@ for (n,i) in models
 
                 first,last = search(lines[offset],o)
                 if (first == last || l[end] != "sec")
-                    println("Expected $shortname in line:\n$(lines[offset])")
+                    error("Expected $shortname in line:\n$(lines[offset])")
                 end
-                @assert l[end] == "sec"
-                @assert first != last
                 t = float(l[end-1])
                 if k > 1
                     d[o] = min(d[o],t)
