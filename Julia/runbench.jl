@@ -1,5 +1,3 @@
-#load("profile")
-
 typealias VariableState Int
 const Basic = 1
 const AtLower = 2
@@ -69,7 +67,6 @@ end
 
 # dot product with nonbasic columns
 # assumes dense input
-#@profile begin
 function doPrice(instance::InstanceData,d::IterationData)
     A = instance.A
     nrow,ncol = size(A)
@@ -313,4 +310,3 @@ function doBenchmarks(inputname)
 end
 
 doBenchmarks(ARGS[1])
-#@profile report
