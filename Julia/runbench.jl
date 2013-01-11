@@ -1,4 +1,4 @@
-require("profile")
+#load("profile")
 
 typealias VariableState Int
 const Basic = 1
