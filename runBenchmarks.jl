@@ -20,7 +20,9 @@ benchmarks = [("Julia",["julia","Julia/runbench.jl"]),("C++",["C++/runbench"]),
 operations = [("mtvec","Matrix-transpose-vector product with non-basic columns"),
     ("smtvec","Hyper-sparse matrix-transpose-vector product"),
     ("rto2","Two-pass dual ratio test"),
-    ("srto2","Hyper-sparse two-pass dual ratio test")]
+    ("srto2","Hyper-sparse two-pass dual ratio test"),
+    ("updul","Update dual iterate with cost shifting"),
+    ("supdul","Hyper-sparse update dual iterate with cost shifting") ]
 
 type ExperimentRow
     model

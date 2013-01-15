@@ -1,10 +1,13 @@
 from array import array
 from time import time
+from copy import deepcopy
 import sys
 
 Basic = 1
 AtLower = 2
 AtUpper = 3
+
+dualTol = 1e-7
 
 class SparseMatrixCSC:
 	def __init__(self,nrow,ncol,colptr,rowval,nzval):
@@ -134,7 +137,6 @@ def doTwoPassRatioTest(instance,d):
 	ncandidates = 0
 	thetaMax = 1e25
 	pivotTol = 1e-7
-	dualTol = 1e-7
 
 	redcost = d.reducedCosts
 	varstate = d.variableState
@@ -178,7 +180,6 @@ def doTwoPassRatioTestHypersparse(instance,d):
 	ncandidates = 0
 	thetaMax = 1e25
 	pivotTol = 1e-7
-	dualTol = 1e-7
 
 	redcost = d.reducedCosts
 	varstate = d.variableState
@@ -218,6 +219,66 @@ def doTwoPassRatioTestHypersparse(instance,d):
 	
 	return time()-t
 
+def doUpdateDuals(instance,d):
+	nrow,ncol = instance.A.nrow,instance.A.ncol
+	
+	redcost = d.reducedCosts
+	varstate = d.variableState
+	tabrow = deepcopy(d.normalizedTableauRow)
+
+	stepsize = 1.
+
+	t = time()
+
+	for i in xrange(nrow+ncol):
+		dnew = redcost[i] - stepsize*tabrow[i]
+
+		if varstate[i] == AtLower:
+			if dnew >= dualTol:
+				redcost[i] = dnew
+			else:
+				delta = -dnew-dualTol
+				redcost[i] = -dualTol
+		elif varstate[i] == AtUpper:
+			if dnew <= dualTol:
+				redcost[i] = dnew
+			else:
+				data = -dnew+dualTol
+				redcost[i] = dualTol
+	
+	return time()-t
+
+def doUpdateDualsHypersparse(instance,d):
+	nrow,ncol = instance.A.nrow,instance.A.ncol
+	
+	redcost = d.reducedCosts
+	varstate = d.variableState
+	tabrow = IndexedVector(d.normalizedTableauRow)
+	tabrowelts = tabrow.elts
+	tabrowidx = tabrow.nzidx
+
+	stepsize = 1.
+
+	t = time()
+
+	for j in xrange(tabrow.nnz):
+		i = tabrowidx[j]
+		dnew = redcost[i] - stepsize*tabrowelts[i]
+
+		if varstate[i] == AtLower:
+			if dnew >= dualTol:
+				redcost[i] = dnew
+			else:
+				redcost[i] = -dualTol
+		elif varstate[i] == AtUpper:
+			if dnew <= dualTol:
+				redcost[i] = dnew
+			else:
+				redcost[i] = dualTol
+	
+	return time()-t
+
+
 
 if __name__ == "__main__":
 	f = open(sys.argv[1],'r')
@@ -227,6 +288,8 @@ if __name__ == "__main__":
 			(doPrice,"Hyper-sparse matrix-transpose-vector product"),
 			(doTwoPassRatioTest,"Two-pass dual ratio test"),
 			(doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
+			(doUpdateDuals,"Update dual iterate with cost shifting"),
+			(doUpdateDualsHypersparse,"Hyper-sparse update dual iterate with cost shifting")
 			]
 
 	timings = len(benchmarks)*[0.]

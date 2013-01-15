@@ -2,6 +2,7 @@ typealias VariableState Int
 const Basic = 1
 const AtLower = 2
 const AtUpper = 3
+const dualTol = 1e-7
 
 type InstanceData
     A::SparseMatrixCSC{Float64,Int64}
@@ -171,7 +172,6 @@ function doTwoPassRatioTest(instance::InstanceData,d::IterationData)
     ncandidates = 0
     thetaMax = 1e25
     pivotTol = 1e-7
-    dualTol = 1e-7
 
     redcost = d.reducedCosts
     varstate = d.variableState
@@ -228,7 +228,6 @@ function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
     ncandidates = 0
     thetaMax = 1e25
     pivotTol = 1e-7
-    dualTol = 1e-7
 
     redcost = d.reducedCosts
     varstate = d.variableState
@@ -279,6 +278,82 @@ function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
 
 end
 
+function doUpdateDuals(instance::InstanceData,d::IterationData)
+    nrow,ncol = size(instance.A)
+
+    redcost = copy(d.reducedCosts)
+    varstate = d.variableState
+    tabrow = d.normalizedTableauRow
+
+    stepsize = 1.
+
+    t = time()
+
+    for i in 1:(nrow+ncol)
+        dnew = redcost[i] - stepsize*tabrow[i]
+
+        # deal with infeasibilities using cost shifting
+        if (varstate[i] == AtLower) 
+            if (dnew >= dualTol) 
+                redcost[i] = dnew
+            else
+                delta = -dnew-dualTol
+                # add delta to objective here
+                redcost[i] = -dualTol
+            end
+        elseif (varstate[i] == AtUpper)
+            if (dnew <= dualTol)
+                redcost[i] = dnew
+            else
+                delta = -dnew+dualTol
+                redcost[i] = dualTol
+            end
+        end
+    end
+
+    return time()-t
+end
+
+function doUpdateDualsHypersparse(instance::InstanceData,d::IterationData)
+    nrow,ncol = size(instance.A)
+
+    redcost = copy(d.reducedCosts)
+    varstate = d.variableState
+    tabrow = IndexedVector(d.normalizedTableauRow)
+    tabrowelts = tabrow.elts
+    tabrowidx = tabrow.nzidx
+
+    stepsize = 1.
+
+    t = time()
+
+    for j in 1:tabrow.nnz
+        i = tabrowidx[j]
+        dnew = redcost[i] - stepsize*tabrowelts[i]
+
+        # deal with infeasibilities using cost shifting
+        if (varstate[i] == AtLower) 
+            if (dnew >= dualTol) 
+                redcost[i] = dnew
+            else
+                # add -dnew-dualTol to objective here
+                redcost[i] = -dualTol
+            end
+        end
+        if (varstate[i] == AtUpper)
+            if (dnew <= dualTol)
+                redcost[i] = dnew
+            else
+                # add -dnew+dualTol to objective here
+                redcost[i] = dualTol
+            end
+        end
+    end
+
+    return time()-t
+end
+
+
 function doBenchmarks(inputname) 
 
     f = open(inputname,"r")
@@ -287,7 +362,9 @@ function doBenchmarks(inputname)
     benchmarks = [(doPrice,"Matrix-transpose-vector product with non-basic columns"),
         (doPriceHypersparse,"Hyper-sparse matrix-transpose-vector product"),
         (doTwoPassRatioTest,"Two-pass dual ratio test"),
-        (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test")]
+        (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
+        (doUpdateDuals,"Update dual iterate with cost shifting"),
+        (doUpdateDualsHypersparse,"Hyper-sparse update dual iterate with cost shifting")]
     timings = zeros(length(benchmarks))
     nruns = 0
     while true

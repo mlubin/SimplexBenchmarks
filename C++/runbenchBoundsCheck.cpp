@@ -1,6 +1,6 @@
 #include "common.cpp"
 
-chrono::nanoseconds doPriceBoundsCheck(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doPrice(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	vector<double> output(A.nrow+A.ncol,0.);
@@ -26,7 +26,7 @@ chrono::nanoseconds doPriceBoundsCheck(InstanceData const& instance, IterationDa
 
 }
 
-chrono::nanoseconds doPriceHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doPriceHypersparse(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	SparseMatrixCSC const &Atrans = instance.Atrans;
@@ -62,7 +62,7 @@ chrono::nanoseconds doPriceHypersparseBoundsCheck(InstanceData const& instance, 
 
 }
 
-chrono::nanoseconds doTwoPassRatioTestBoundsCheck(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	int nrow = A.nrow, ncol = A.ncol;
@@ -111,7 +111,7 @@ chrono::nanoseconds doTwoPassRatioTestBoundsCheck(InstanceData const& instance, 
 	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
 }
 
-chrono::nanoseconds doTwoPassRatioTestHypersparseBoundsCheck(InstanceData const& instance, IterationData const& d) {
+chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, IterationData const& d) {
 
 	SparseMatrixCSC const &A = instance.A;
 	int nrow = A.nrow, ncol = A.ncol;
@@ -164,6 +164,75 @@ chrono::nanoseconds doTwoPassRatioTestHypersparseBoundsCheck(InstanceData const&
 	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
 }
 
+chrono::nanoseconds doUpdateDuals(InstanceData const& instance, IterationData const& d) {
+	
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<double> redcost = d.reducedCosts;
+	double stepsize = 1;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < nrow+ncol; i++) {
+		double dnew = redcost.at(i) - stepsize*d.normalizedTableauRow.at(i);
+
+		if (d.variableState.at(i) == AtLower) {
+			if (dnew >= dualTol) {
+				redcost.at(i) = dnew;
+			} else {
+				redcost.at(i) = -dualTol;
+			}
+		} else if (d.variableState.at(i) == AtUpper) {
+			if (dnew <= dualTol) {
+				redcost.at(i) = dnew;
+			} else {
+				redcost.at(i) = dualTol;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+chrono::nanoseconds doUpdateDualsHypersparse(InstanceData const& instance, IterationData const& d) {
+	
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<double> redcost = d.reducedCosts;
+	IndexedVector tabrow(d.normalizedTableauRow);
+	double stepsize = 1;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int j = 0; j < tabrow.nnz; j++) {
+		int i = tabrow.nzidx.at(j);
+		double dnew = redcost.at(i) - stepsize*tabrow.elts.at(i);
+
+		if (d.variableState.at(i) == AtLower) {
+			if (dnew >= dualTol) {
+				redcost.at(i) = dnew;
+			} else {
+				double delta = -dnew-dualTol;
+				redcost.at(i) = -dualTol;
+			}
+		} else if (d.variableState[i] == AtUpper) {
+			if (dnew <= dualTol) {
+				redcost.at(i) = dnew;
+			} else {
+				double delta = -dnew+dualTol;
+				redcost.at(i) = dualTol;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+
 int main(int argc, char**argv) {
 
 	assert(argc == 2);
@@ -173,10 +242,12 @@ int main(int argc, char**argv) {
 	cout << "Problem is " << instance.A.nrow << " by " << instance.A.ncol << " with " << instance.A.nzval.size() << " nonzeros\n";
 	
 	vector<BenchmarkOperation> benchmarks{ 
-		{ doPriceBoundsCheck, "Matrix-transpose-vector product with non-basic columns" },
-		{ doPriceHypersparseBoundsCheck, "Hyper-sparse matrix-transpose-vector product" },
-		{ doTwoPassRatioTestBoundsCheck, "Two-pass dual ratio test" },
-		{ doTwoPassRatioTestHypersparseBoundsCheck, "Hyper-sparse two-pass dual ratio test" },
+		{ doPrice, "Matrix-transpose-vector product with non-basic columns" },
+		{ doPriceHypersparse, "Hyper-sparse matrix-transpose-vector product" },
+		{ doTwoPassRatioTest, "Two-pass dual ratio test" },
+		{ doTwoPassRatioTestHypersparse, "Hyper-sparse two-pass dual ratio test" },
+		{ doUpdateDuals, "Update dual iterate with cost shifting" },
+		{ doUpdateDualsHypersparse, "Hyper-sparse update dual iterate with cost shifting" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 

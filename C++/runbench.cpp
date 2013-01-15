@@ -74,7 +74,7 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 	vector<int> candidates(ncol);
 	int ncandidates = 0;
 	double thetaMax = 1e25;
-	const double pivotTol = 1e-7, dualTol = 1e-7;
+	const double pivotTol = 1e-7;
 
 	auto t = chrono::high_resolution_clock::now();
 
@@ -124,7 +124,7 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	vector<int> candidates(ncol);
 	int ncandidates = 0;
 	double thetaMax = 1e25;
-	const double pivotTol = 1e-7, dualTol = 1e-7;
+	const double pivotTol = 1e-7;
 
 	IndexedVector tabrow(d.normalizedTableauRow);
 	
@@ -169,7 +169,71 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
 }
 
+chrono::nanoseconds doUpdateDuals(InstanceData const& instance, IterationData const& d) {
+	
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
 
+	vector<double> redcost = d.reducedCosts;
+	double stepsize = 1;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < nrow+ncol; i++) {
+		double dnew = redcost[i] - stepsize*d.normalizedTableauRow[i];
+
+		if (d.variableState[i] == AtLower) {
+			if (dnew >= dualTol) {
+				redcost[i] = dnew;
+			} else {
+				redcost[i] = -dualTol;
+			}
+		} else if (d.variableState[i] == AtUpper) {
+			if (dnew <= dualTol) {
+				redcost[i] = dnew;
+			} else {
+				redcost[i] = dualTol;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
+
+chrono::nanoseconds doUpdateDualsHypersparse(InstanceData const& instance, IterationData const& d) {
+	
+	SparseMatrixCSC const &A = instance.A;
+	int nrow = A.nrow, ncol = A.ncol;
+
+	vector<double> redcost = d.reducedCosts;
+	IndexedVector tabrow(d.normalizedTableauRow);
+	double stepsize = 1;
+
+	auto t = chrono::high_resolution_clock::now();
+
+	for (int j = 0; j < tabrow.nnz; j++) {
+		int i = tabrow.nzidx[j];
+		double dnew = redcost[i] - stepsize*tabrow.elts[i];
+
+		if (d.variableState[i] == AtLower) {
+			if (dnew >= dualTol) {
+				redcost[i] = dnew;
+			} else {
+				redcost[i] = -dualTol;
+			}
+		} else if (d.variableState[i] == AtUpper) {
+			if (dnew <= dualTol) {
+				redcost[i] = dnew;
+			} else {
+				redcost[i] = dualTol;
+			}
+		}
+	}
+
+	auto t2 = chrono::high_resolution_clock::now();
+	return chrono::duration_cast<chrono::nanoseconds>(t2-t);
+}
 
 
 int main(int argc, char**argv) {
@@ -185,6 +249,8 @@ int main(int argc, char**argv) {
 		{ doPriceHypersparse, "Hyper-sparse matrix-transpose-vector product" },
 		{ doTwoPassRatioTest, "Two-pass dual ratio test" },
 		{ doTwoPassRatioTestHypersparse, "Hyper-sparse two-pass dual ratio test" },
+		{ doUpdateDuals, "Update dual iterate with cost shifting" },
+		{ doUpdateDualsHypersparse, "Hyper-sparse update dual iterate with cost shifting" },
 	};
 	vector<chrono::nanoseconds> timings(benchmarks.size(), chrono::nanoseconds::zero());
 

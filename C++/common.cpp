@@ -10,6 +10,7 @@
 
 using namespace std;
 
+const double dualTol = 1e-7;
 
 struct SparseMatrixCSC {
 	int nrow, ncol;

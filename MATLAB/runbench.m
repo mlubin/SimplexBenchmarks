@@ -30,6 +30,8 @@ function [] = runbench(fileName)
     doPriceHypersparseTime = 0;
     doTwoPassRatioTestTime = 0;
     doTwoPassRatioTestHypersparseTime = 0;
+    doUpdateDualsTime = 0;
+    doUpdateDualsHypersparseTime = 0;
     
     while 1==1
         % Attempt to read an iteration
@@ -171,8 +173,7 @@ function [] = runbench(fileName)
         ncandidates = 0;
         thetaMax = 1e25;
         pivotTol = 1e-7;
-        dualTol = 1e-7;
-        
+
         tabrow_nnz = 0;
         tabrow_elts = zeros(A_nrow+A_ncol,1);
         tabrow_idx  = zeros(A_nrow+A_ncol,1);
@@ -224,6 +225,62 @@ function [] = runbench(fileName)
         t=toc;
         doTwoPassRatioTestHypersparseTime = doTwoPassRatioTestHypersparseTime + t;
 
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % doUpdateDuals
+        stepsize = 1.;
+        newRedCost = redCost; % make a copy
+        tic;
+        for i = 1:(A_nrow+A_ncol)
+            thisState = variableState(i);
+            dnew = newRedCost(i) - stepsize*tabrow_elts(i);
+
+            if (thisState == ATLOWER)
+                if (dnew >= dualTol)
+                    newRedCost(i) = dnew;
+                else
+                    newRedCost(i) = -dualTol;
+                end
+            elseif (thisState == ATUPPER)
+                if (dnew <= dualTol)
+                    newRedCost(i) = dnew;
+                else
+                    newRedCost(i) = dualTol;
+                end
+            end
+        end
+
+        t=toc;
+        doUpdateDualsTime = doUpdateDualsTime + t;
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % doUpdateDualsHypersparse
+        newRedCost = redCost; 
+        tic;
+        for j = 1:tabrow_nnz
+            i = tabrow_idx(j);
+            thisState = variableState(i);
+            dnew = newRedCost(i) - stepsize*tabrow_elts(i);
+
+            if (thisState == ATLOWER)
+                if (dnew >= dualTol)
+                    newRedCost(i) = dnew;
+                else
+                    newRedCost(i) = -dualTol;
+                end
+            elseif (thisState == ATUPPER)
+                if (dnew <= dualTol)
+                    newRedCost(i) = dnew;
+                else
+                    newRedCost(i) = dualTol;
+                end
+            end
+        end
+
+        t=toc;
+        doUpdateDualsHypersparseTime = doUpdateDualsHypersparseTime + t;
+
+            
     end
     
     disp([num2str(iterationCount),' simulated iterations'])
@@ -231,5 +288,7 @@ function [] = runbench(fileName)
     disp(['Hyper-sparse matrix-transpose-vector product: ',num2str(doPriceHypersparseTime),' sec'])
     disp(['Two-pass dual ratio test: ',num2str(doTwoPassRatioTestTime),' sec']);
     disp(['Hyper-sparse two-pass dual ratio test: ',num2str(doTwoPassRatioTestHypersparseTime),' sec']);
+    disp(['Update dual iterate with cost shifting: ',num2str(doUpdateDualsTime),' sec']);
+    disp(['Hyper-sparse update dual iterate with cost shifting: ',num2str(doUpdateDualsHypersparseTime),' sec']);
 
 end

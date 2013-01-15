@@ -23,11 +23,15 @@ Then run: ```julia runBenchmarks.jl```. The initial run will take a long time as
 	mtvec:	1.44	0.76	1.00	8.72	4.11	82.12	
 	smtvec:	1.29	0.90	1.00	5.79	19.20	417.16	
 	rto2:	1.51	0.84	1.00	19.75	4.03	49.91	
-	srto2:	1.59	0.96	1.00	13.98	13.81	48.39	
+	srto2:	1.59	0.96	1.00	13.98	13.81	48.39
+	updul:	1.37	0.70	1.00	11.69	3.48	96.14	
+	supdul:	1.85	0.70	1.00	19.12	9.21	78.65
 	
 	Key:
 	mtvec = Matrix-transpose-vector product with non-basic columns
 	smtvec = Hyper-sparse matrix-transpose-vector product
 	rto2 = Two-pass dual ratio test
 	srto2 = Hyper-sparse two-pass dual ratio test
+	updul = Update dual iterate with cost shifting
+	supdul = Hyper-sparse update dual iterate with cost shifting
 	C++bnd = C++ with bounds checking
