@@ -1,5 +1,5 @@
 load("pfi")
-load("glpk") # for reading MPS
+load("GLPK") # use GLPK package for reading MPS
 #load("profile.jl")
 
 typealias ConstraintType Int # why no enum...
