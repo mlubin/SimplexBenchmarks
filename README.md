@@ -35,3 +35,8 @@ Then run: ```julia runBenchmarks.jl```. The initial run will take a long time as
 	updul = Update dual iterate with cost shifting
 	supdul = Hyper-sparse update dual iterate with cost shifting
 	C++bnd = C++ with bounds checking
+
+### Why didn't you implement a version in SciPy?
+
+The simplex algorithm requires some unusual sparse linear algebra operations (e.g. sparse mat-sparse vec product) that, to my knowledge, aren't provided by SciPy. The code is also difficult to vectorize, so it's unclear if there is any benefit to using numpy arrays. Submissions are welcome. 
+
