@@ -149,6 +149,8 @@ def doTwoPassRatioTest(instance,d):
 		if thisState == Basic: continue
 		pivotElt = tabrow[i]
 		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
+			candidates[ncandidates] = i
+			ncandidates += 1
 			ratio = 0.
 			if (pivotElt < 0.):
 				ratio = (redcost[i] - dualTol)/pivotElt
@@ -156,8 +158,6 @@ def doTwoPassRatioTest(instance,d):
 				ratio = (redcost[i] + dualTol)/pivotElt
 			if (ratio < thetaMax):
 				thetaMax = ratio
-				candidates[ncandidates] = i
-				ncandidates += 1
 
 	enter = -1
 	maxAlpha = 0.
@@ -195,6 +195,8 @@ def doTwoPassRatioTestHypersparse(instance,d):
 		if thisState == Basic: continue
 		pivotElt = tabrowelts[i]
 		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
+			candidates[ncandidates] = i
+			ncandidates += 1
 			ratio = 0.
 			if (pivotElt < 0.):
 				ratio = (redcost[i] - dualTol)/pivotElt
@@ -202,8 +204,6 @@ def doTwoPassRatioTestHypersparse(instance,d):
 				ratio = (redcost[i] + dualTol)/pivotElt
 			if (ratio < thetaMax):
 				thetaMax = ratio
-				candidates[ncandidates] = i
-				ncandidates += 1
 
 	enter = -1
 	maxAlpha = 0.

@@ -80,6 +80,7 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 		double pivotElt = d.normalizedTableauRow.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			candidates.at(ncandidates++) = i;
 			double ratio;
 			if (pivotElt < 0.) {
 				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
@@ -88,7 +89,6 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 			}
 			if (ratio < thetaMax) {
 				thetaMax = ratio;
-				candidates.at(ncandidates++) = i;
 			}
 		}
 	}
@@ -133,6 +133,7 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 		double pivotElt = tabrow.elts.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
+			candidates.at(ncandidates++) = i;
 			double ratio;
 			if (pivotElt < 0.) {
 				ratio = (d.reducedCosts.at(i) - dualTol)/pivotElt;
@@ -141,7 +142,6 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 			}
 			if (ratio < thetaMax) {
 				thetaMax = ratio;
-				candidates.at(ncandidates++) = i;
 			}
 		}
 	}

@@ -136,6 +136,8 @@ function [] = runbench(fileName)
            end
            pivotElt = normTableauRow(i);
            if (thisState == ATLOWER && pivotElt > pivotTol) || (thisState == ATUPPER && pivotElt < -pivotTol)
+			   ncandidates = ncandidates + 1;
+			   candidates(ncandidates) = i;
                ratio = 0;
                if pivotElt < 0
                    ratio = (redCost(i) - dualTol)/pivotElt;
@@ -144,8 +146,6 @@ function [] = runbench(fileName)
                end
                if ratio < thetaMax
                    thetaMax = ratio;
-                   ncandidates = ncandidates + 1;
-                   candidates(ncandidates) = i;
                end
            end
         end
@@ -194,6 +194,8 @@ function [] = runbench(fileName)
             end
             pivotElt = tabrow_elts(i);
             if (thisState == ATLOWER && pivotElt > pivotTol) || (thisState == ATUPPER && pivotElt < -pivotTol)
+				ncandidates = ncandidates + 1;
+				candidates(ncandidates) = i;
                 ratio = 0;
                 if pivotElt < 0
                     ratio = (redCost(i) - dualTol)/pivotElt;
@@ -202,8 +204,6 @@ function [] = runbench(fileName)
                 end
                 if ratio < thetaMax
                     thetaMax = ratio;
-                    ncandidates = ncandidates + 1;
-                    candidates(ncandidates) = i;
                 end
             end
         end

@@ -186,6 +186,7 @@ function doTwoPassRatioTest(instance::InstanceData,d::IterationData)
         end
         pivotElt = tabrow[i]
         if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
+            candidates[ncandidates += 1] = i
             ratio = 0.
             if (pivotElt < 0.)
                 ratio = (redcost[i] - dualTol)/pivotElt
@@ -194,7 +195,6 @@ function doTwoPassRatioTest(instance::InstanceData,d::IterationData)
             end
             if (ratio < thetaMax)
                 thetaMax = ratio
-                candidates[ncandidates += 1] = i
             end
         end
     end
@@ -246,6 +246,7 @@ function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
         pivotElt = tabrowelts[i]
         if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
             ratio = 0.
+            candidates[ncandidates += 1] = i
             if (pivotElt < 0.)
                 ratio = (redcost[i] - dualTol)/pivotElt
             else
@@ -253,7 +254,6 @@ function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
             end
             if (ratio < thetaMax)
                 thetaMax = ratio
-                candidates[ncandidates += 1] = i
             end
         end
     end
