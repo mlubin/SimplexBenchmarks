@@ -181,9 +181,6 @@ function doTwoPassRatioTest(instance::InstanceData,d::IterationData)
 
     for i in 1:(ncol+nrow)
         thisState = varstate[i]
-        if thisState == Basic # || d.boundClass[i] == Fixed
-            continue
-        end
         pivotElt = tabrow[i]
         if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
             candidates[ncandidates += 1] = i
@@ -240,9 +237,6 @@ function doTwoPassRatioTestHypersparse(instance::InstanceData,d::IterationData)
     for k in 1:tabrow.nnz
         i = tabrowidx[k]
         thisState = varstate[i]
-        if thisState == Basic # || d.boundClass[i] == Fixed
-            continue
-        end
         pivotElt = tabrowelts[i]
         if (thisState == AtLower && pivotElt > pivotTol) || (thisState == AtUpper && pivotElt < -pivotTol) # || (varstate[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol))
             ratio = 0.

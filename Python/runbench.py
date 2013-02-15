@@ -146,7 +146,6 @@ def doTwoPassRatioTest(instance,d):
 
 	for i in xrange(ncol+nrow):
 		thisState = varstate[i]
-		if thisState == Basic: continue
 		pivotElt = tabrow[i]
 		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
 			candidates[ncandidates] = i
@@ -192,7 +191,6 @@ def doTwoPassRatioTestHypersparse(instance,d):
 	for k in xrange(tabrow.nnz):
 		i = tabrowidx[k]
 		thisState = varstate[i]
-		if thisState == Basic: continue
 		pivotElt = tabrowelts[i]
 		if (thisState == AtLower and pivotElt > pivotTol) or (thisState == AtUpper and pivotElt < -pivotTol):
 			candidates[ncandidates] = i

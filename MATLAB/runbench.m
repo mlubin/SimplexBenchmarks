@@ -131,9 +131,6 @@ function [] = runbench(fileName)
         tic
         for i = 1:(A_ncol+A_nrow)
            thisState = variableState(i);
-           if thisState == BASIC
-               continue
-           end
            pivotElt = normTableauRow(i);
            if (thisState == ATLOWER && pivotElt > pivotTol) || (thisState == ATUPPER && pivotElt < -pivotTol)
 			   ncandidates = ncandidates + 1;
@@ -189,9 +186,6 @@ function [] = runbench(fileName)
         for k = 1:tabrow_nnz
             i = tabrow_idx(k);
             thisState = variableState(i);
-            if thisState == BASIC
-               continue
-            end
             pivotElt = tabrow_elts(i);
             if (thisState == ATLOWER && pivotElt > pivotTol) || (thisState == ATUPPER && pivotElt < -pivotTol)
 				ncandidates = ncandidates + 1;

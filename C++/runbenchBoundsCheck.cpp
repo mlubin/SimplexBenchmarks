@@ -76,7 +76,6 @@ chrono::nanoseconds doTwoPassRatioTest(InstanceData const& instance, IterationDa
 
 	for (int i = 0; i < nrow+ncol; i++) {
 		VariableState thisState = d.variableState.at(i);
-		if (thisState == Basic) continue;
 		double pivotElt = d.normalizedTableauRow.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
@@ -129,7 +128,6 @@ chrono::nanoseconds doTwoPassRatioTestHypersparse(InstanceData const& instance, 
 	for (int k = 0; k < tabrow.nnz; k++) {
 		int i = tabrow.nzidx.at(k);
 		VariableState thisState = d.variableState.at(i);
-		if (thisState == Basic) continue;
 		double pivotElt = tabrow.elts.at(i);
 		if ( (thisState == AtLower && pivotElt > pivotTol) ||
 		     (thisState == AtUpper && pivotElt < -pivotTol)) {
