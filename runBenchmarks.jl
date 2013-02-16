@@ -1,12 +1,11 @@
 
-models = [("greenbea",10),("stocfor3",40),("ken-13",200)]
+models = [("greenbea",20),("stocfor3",80),("ken-13",400),("fome12",450)]
 
 # dump simplex data
 cd("GenerateData")
 for (n,i) in models
     if !isfile("$(n).gz.dump")
-        r = system("julia gendump.jl $(n).gz $i")
-        @assert r == 0
+        run(`julia gendump.jl $(n).gz $i`)
     end
 end
 cd("..")
