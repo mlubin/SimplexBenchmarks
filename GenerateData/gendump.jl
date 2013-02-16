@@ -1,4 +1,4 @@
-load("jlSimplex.jl")
+require("jlSimplex")
 
 function dumpHead(d,f)
     nrow,ncol = size(d.data.A)
@@ -27,4 +27,5 @@ function doTests(mpsfile,dump)
 end
 
 @assert length(ARGS) == 2
+ENV["OMP_NUM_THREADS"] = 1 # multithreaded blas/lapack can slow down execution
 doTests(ARGS[1],int(ARGS[2]))
