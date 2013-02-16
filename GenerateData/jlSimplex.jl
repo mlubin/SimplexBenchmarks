@@ -1,6 +1,5 @@
 load("pfi")
 load("GLPK") # use GLPK package for reading MPS
-#load("profile.jl")
 
 typealias ConstraintType Int # why no enum...
 typealias VariableState Int
@@ -87,7 +86,7 @@ function Timings()
     Timings(0.,0.,0.,0.,0.,0.,0.,0.,0.)
 end
 
-function show(io,t::Timings)
+function show(io::IO,t::Timings)
     print(io,"matvec: $(t.matvec)\nratio test: $(t.ratiotest) \nscan: $(t.scan)\nftran: $(t.ftran)\nbtran: $(t.btran)\nftran2: $(t.ftran)\nfactor: $(t.factor)\nupdate factor: $(t.updatefactor)\nupdate iterates: $(t.updateiters)")
 end
 
@@ -321,6 +320,7 @@ function dualRatioTest(d::DualSimplexData,alpha2)
         #print("d: $(d.d[i]) alpha: $(alpha2[i])\n")
         if ((d.variableState[i] == AtLower && alpha2[i] > pivotTol) || (d.variableState[i] == AtUpper && alpha2[i] < -pivotTol) || (d.data.boundClass[i] == Free && (alpha2[i] > pivotTol || alpha2[i] < -pivotTol)))
             ratio = 0.
+            candidates[ncandidates += 1] = i
             if (alpha2[i] < 0.)
                 ratio = (d.d[i] - d.dualTol)/alpha2[i]
             else
@@ -329,7 +329,6 @@ function dualRatioTest(d::DualSimplexData,alpha2)
             #print("d: $(d.d[i]) alpha: $(alpha2[i]) ratio: $ratio \n")
             if (ratio < thetaMax)
                 thetaMax = ratio
-                candidates[ncandidates += 1] = i
             end
         end
     end
@@ -726,8 +725,6 @@ function flipBounds(d::DualSimplexData)
     end
 end
 
-
-#end # @profile begin
 
 function LPDataFromMPS(mpsfile::String) 
 
