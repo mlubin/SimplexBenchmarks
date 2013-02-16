@@ -1,5 +1,5 @@
-load("pfi")
-load("GLPK") # use GLPK package for reading MPS
+require("pfi")
+require("GLPK") # use GLPK package for reading MPS
 
 typealias ConstraintType Int # why no enum...
 typealias VariableState Int
@@ -408,8 +408,8 @@ function iterate(d::DualSimplexData)
 
     alpha = zeros(ncol+nrow)
     if (d.nIter % dumpEvery == 0) 
-        write(f,strcat(join(d.variableState," "),"\n"))
-        write(f,strcat(join(rho," "),"\n"))
+        write(f,string(join(d.variableState," "),"\n"))
+        write(f,string(join(rho," "),"\n"))
     end
     t = time()
     price(d.data.A,d.variableState,rho,alpha)
@@ -420,8 +420,8 @@ function iterate(d::DualSimplexData)
     end
 
     if (d.nIter % dumpEvery == 0)
-        write(f,strcat(join(d.d," "),"\n"))
-        write(f,strcat(join(alpha," "),"\n"))
+        write(f,string(join(d.d," "),"\n"))
+        write(f,string(join(alpha," "),"\n"))
     end
 
     delta = (leaveType == Below) ? (d.x[leaveIdx] - d.data.l[leaveIdx]) : (d.x[leaveIdx] - d.data.u[leaveIdx])
