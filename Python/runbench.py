@@ -108,7 +108,7 @@ def doPriceHypersparse(instance,d):
 
 	Atrv = Atrans.rowval
 	Atnz = Atrans.nzval
-
+	
 	t = time()
 
 	for k in xrange(rho.nnz):
@@ -124,9 +124,9 @@ def doPriceHypersparse(instance,d):
 				outputelts[idx] = elt*Atnz[j]
 				outputnzidx[outputnnz] = idx
 				outputnnz += 1
-			outputelts[row+ncol] = -elt
-			outputnzidx[outputnnz] = row+ncol
-			outputnnz += 1
+		outputelts[row+ncol] = -elt
+		outputnzidx[outputnnz] = row+ncol
+		outputnnz += 1
 
 	return time()-t
 
