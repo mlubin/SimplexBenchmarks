@@ -116,7 +116,7 @@ def doPriceHypersparse(instance,d):
 		elt = rhoelts[row]
 		for j in xrange(Atrans.colptr[row],Atrans.colptr[row+1]):
 			idx = Atrv[j]
-			val = outputielts[idx]
+			val = outputelts[idx]
 			if (val != 0.):
 				val += elt*Atnz[j]
 				outputelts[idx] = val
@@ -125,7 +125,7 @@ def doPriceHypersparse(instance,d):
 				outputnzidx[outputnnz] = idx
 				outputnnz += 1
 			outputelts[row+ncol] = -elt
-			outputnzidx[outputnnz] = row+col
+			outputnzidx[outputnnz] = row+ncol
 			outputnnz += 1
 
 	return time()-t
@@ -281,7 +281,7 @@ if __name__ == "__main__":
 	instance = readInstance(f)
 	print "Problem is",instance.A.nrow,"by",instance.A.ncol,"with",len(instance.A.nzval),"nonzeros"
 	benchmarks = [(doPrice,"Matrix-transpose-vector product with non-basic columns"),
-			(doPrice,"Hyper-sparse matrix-transpose-vector product"),
+			(doPriceHypersparse,"Hyper-sparse matrix-transpose-vector product"),
 			(doTwoPassRatioTest,"Two-pass dual ratio test"),
 			(doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
 			(doUpdateDuals,"Update dual iterate with cost shifting"),
