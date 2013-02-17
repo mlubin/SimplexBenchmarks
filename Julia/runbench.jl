@@ -291,7 +291,7 @@ function doUpdateDuals(instance::InstanceData,d::IterationData)
             if (dnew >= dualTol) 
                 redcost[i] = dnew
             else
-                delta = -dnew-dualTol
+                # delta = -dnew-dualTol
                 # add delta to objective here
                 redcost[i] = -dualTol
             end
@@ -299,7 +299,7 @@ function doUpdateDuals(instance::InstanceData,d::IterationData)
             if (dnew <= dualTol)
                 redcost[i] = dnew
             else
-                delta = -dnew+dualTol
+                # delta = -dnew+dualTol
                 redcost[i] = dualTol
             end
         end

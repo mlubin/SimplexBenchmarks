@@ -235,13 +235,11 @@ def doUpdateDuals(instance,d):
 			if dnew >= dualTol:
 				redcost[i] = dnew
 			else:
-				delta = -dnew-dualTol
 				redcost[i] = -dualTol
 		elif varstate[i] == AtUpper:
 			if dnew <= dualTol:
 				redcost[i] = dnew
 			else:
-				data = -dnew+dualTol
 				redcost[i] = dualTol
 	
 	return time()-t

@@ -213,14 +213,12 @@ chrono::nanoseconds doUpdateDualsHypersparse(InstanceData const& instance, Itera
 			if (dnew >= dualTol) {
 				redcost.at(i) = dnew;
 			} else {
-				double delta = -dnew-dualTol;
 				redcost.at(i) = -dualTol;
 			}
 		} else if (d.variableState[i] == AtUpper) {
 			if (dnew <= dualTol) {
 				redcost.at(i) = dnew;
 			} else {
-				double delta = -dnew+dualTol;
 				redcost.at(i) = dualTol;
 			}
 		}
