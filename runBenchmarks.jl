@@ -4,8 +4,11 @@ models = [("greenbea",20),("stocfor3",80),("ken-13",400),("fome12",450)]
 # dump simplex data
 cd("GenerateData")
 for (n,i) in models
-    if !isfile("$(n).gz.dump")
-        run(`julia gendump.jl $(n).gz $i`)
+    if !isfile("$(n)")
+        run(`gunzip -k $(n).gz`)
+    end
+    if !isfile("$(n).dump")
+        run(`julia gendump.jl $(n) $i`)
     end
 end
 cd("..")
@@ -39,7 +42,7 @@ for (n,i) in models
     for (language,command) in benchmarks
         d = Dict()
         for k in 1:nrepeat
-            output = readall(`$command GenerateData/$(n).gz.dump`)
+            output = readall(`$command GenerateData/$(n).dump`)
             lines = split(output,"\n")
             println("$(lines[1])\n$(lines[2])")
             offset = 3 # 3rd line has the result of the operations
