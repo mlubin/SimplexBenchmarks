@@ -5,7 +5,7 @@ models = [("greenbea",20),("stocfor3",80),("ken-13",400),("fome12",450)]
 cd("GenerateData")
 for (n,i) in models
     if !isfile("$(n)")
-        run(`gunzip -k $(n).gz`)
+        run(`gunzip $(n).gz`)
     end
     if !isfile("$(n).dump")
         run(`julia gendump.jl $(n) $i`)
