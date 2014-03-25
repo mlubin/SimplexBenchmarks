@@ -5,7 +5,9 @@ models = [("greenbea",20),("stocfor3",80),("ken-13",400),("fome12",450)]
 cd("GenerateData")
 for (n,i) in models
     if !isfile("$(n)")
+        # this is a workaround for a bug in GLPK: http://lists.gnu.org/archive/html/bug-glpk/2013-11/msg00012.html
         run(`gunzip $(n).gz`)
+        run(`git checkout -- $(n).gz`) # keep the repo clean
     end
     if !isfile("$(n).dump")
         run(`julia gendump.jl $(n) $i`)
