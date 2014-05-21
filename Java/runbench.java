@@ -14,14 +14,44 @@ class SimplexBenchmarks {
                                 " by " + instance.A.ncol +
                                 " with " + instance.A.nnz + " nonzeros");
 
+            int nruns = 0;
+            long total_price_time = 0;
+            long total_pricehs_time = 0;
+            long total_twopass_time = 0;
+            long total_twopasshs_time = 0;
+
             while (true) {
                 IterationData itdata = new IterationData(lnr);
+                if (!itdata.valid) {
+                    break;
+                }
+
+                nruns += 1;
+
                 long price_time = doPrice(instance, itdata);
-                System.out.println(price_time);
+                total_price_time += price_time;
+                // System.out.println(price_time);
+                
                 long pricehs_time = doPriceHypersparse(instance, itdata);
-                System.out.println(pricehs_time);
-                break;
+                total_pricehs_time += pricehs_time;
+                // System.out.println(pricehs_time);
+                
+                long twopass_time = doTwoPassRatioTest(instance, itdata);
+                total_twopass_time += twopass_time;
+                // System.out.println(twopass_time);
+
+                long twopasshs_time = doTwoPassRatioTestHypersparse(instance, itdata);
+                total_twopasshs_time += twopasshs_time;
+                // System.out.println(twopasshs_time);
             }
+
+            System.out.println(nruns + " simulated iterations");
+            System.out.println("Matrix-transpose-vector product with non-basic columns: " + total_price_time*1.0 / nruns + " sec");
+            System.out.println("Hyper-sparse matrix-transpose-vector product:  " + total_pricehs_time*1.0 / nruns + " sec");
+            System.out.println("Two-pass dual ratio test: " + total_twopass_time*1.0 / nruns + " sec");
+            System.out.println("Hyper-sparse two-pass dual ratio test: " + total_twopasshs_time*1.0 / nruns + " sec");
+            // Update dual iterate with cost shifting: 0.014618396759033203 sec
+            // Hyper-sparse update dual iterate with cost shifting: 0.007954835891723633 sec
 
         } catch(Exception e) {
             e.printStackTrace();
@@ -63,14 +93,14 @@ class SimplexBenchmarks {
         }
 
         // Error checking
-        double sumout_less_norm = 0.0;
-        double sumout_plus_norm = 0.0;
-        for (int i = 0; i < nrow + ncol; i++) {
-            sumout_less_norm += output[i] - d.normalizedTableauRow[i];
-            sumout_plus_norm += output[i] + d.normalizedTableauRow[i];
-        }
-        System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
-        System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
+        // double sumout_less_norm = 0.0;
+        // double sumout_plus_norm = 0.0;
+        // for (int i = 0; i < nrow + ncol; i++) {
+        //     sumout_less_norm += output[i] - d.normalizedTableauRow[i];
+        //     sumout_plus_norm += output[i] + d.normalizedTableauRow[i];
+        // }
+        // System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
+        // System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
 
         return System.currentTimeMillis() - t;
     }
@@ -115,18 +145,132 @@ class SimplexBenchmarks {
         }
 
         // Error checking
-        double sumout_less_norm = 0.0;
-        double sumout_plus_norm = 0.0;
-        for (int i = 0; i < nrow + ncol; i++) {
-            sumout_less_norm += outputelts[i] - d.normalizedTableauRow[i];
-            sumout_plus_norm += outputelts[i] + d.normalizedTableauRow[i];
-        }
-        System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
-        System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
+        // double sumout_less_norm = 0.0;
+        // double sumout_plus_norm = 0.0;
+        // for (int i = 0; i < nrow + ncol; i++) {
+        //     sumout_less_norm += outputelts[i] - d.normalizedTableauRow[i];
+        //     sumout_plus_norm += outputelts[i] + d.normalizedTableauRow[i];
+        // }
+        // System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
+        // System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
 
         return System.currentTimeMillis() - t;
     }
 
+
+    public static long doTwoPassRatioTest(InstanceData instance, IterationData d) {
+        // Direct translation of the Python code
+        SparseMatrixCSC A = instance.A;
+        int nrow = A.nrow;
+        int ncol = A.ncol;
+        int[] candidates = new int[ncol];
+        int ncandidates = 0;
+        double thetaMax = 1e25;
+        double pivotTol = 1e-7;
+        double dualTol = 1e-7;
+
+        double[]  redcost = d.reducedCosts;
+        int[]    varstate = d.variableState;
+        double[]   tabrow = d.normalizedTableauRow;
+
+        final long t = System.currentTimeMillis();
+
+        for (int i = 0; i < ncol + nrow; i++) {
+            int thisState = varstate[i];
+            double pivotElt = tabrow[i];
+            // 2 == ATLOWER, 3 == ATUPPER
+            if ((thisState == 2 && pivotElt >  pivotTol) || 
+                (thisState == 3 && pivotElt < -pivotTol)) {
+                candidates[ncandidates] = i;
+                ncandidates += 1;
+                double ratio = 0.0;
+                if (pivotElt < 0.0) {
+                    ratio = (redcost[i] - dualTol)/pivotElt;
+                } else {
+                    ratio = (redcost[i] + dualTol)/pivotTol;
+                }
+                if (ratio < thetaMax) {
+                    thetaMax = ratio;
+                }
+            }
+        }
+
+        int enter = -1;
+        double maxAlpha = 0.0;
+
+        for (int k = 0; k < ncandidates; k++) {
+            int i = candidates[k];
+            double ratio = redcost[i]/tabrow[i];
+            if (ratio <= thetaMax) {
+                double absalpha = Math.abs(tabrow[i]);
+                if (absalpha > maxAlpha) {
+                    maxAlpha = absalpha;
+                    enter = i;
+                }
+            }
+        }
+
+        return System.currentTimeMillis() - t;
+    }
+
+
+    public static long doTwoPassRatioTestHypersparse(InstanceData instance, IterationData d) {
+        // Direct translation of the Python code
+        SparseMatrixCSC A = instance.A;
+        int nrow = A.nrow;
+        int ncol = A.ncol;
+        int[] candidates = new int[ncol];
+        int ncandidates = 0;
+        double thetaMax = 1e25;
+        double pivotTol = 1e-7;
+        double dualTol = 1e-7;
+
+        double[]  redcost = d.reducedCosts;
+        int[]    varstate = d.variableState;
+        IndexedVector tabrow = new IndexedVector(d.normalizedTableauRow);
+        double[]  tabrowelts = tabrow.elts;
+        int[]      tabrowidx = tabrow.nzidx;
+
+        long t = System.currentTimeMillis();
+
+        for (int k = 0; k < tabrow.nnz; k++) {
+            int i = tabrowidx[k];
+            int thisState = varstate[i];
+            double pivotElt = tabrowelts[i];
+            // 2 == ATLOWER, 3 == ATUPPER
+            if ((thisState == 2 && pivotElt >  pivotTol) || 
+                (thisState == 3 && pivotElt < -pivotTol)) {
+                candidates[ncandidates] = i;
+                ncandidates += 1;
+                double ratio = 0.0;
+                if (pivotElt < 0.0) {
+                    ratio = (redcost[i] - dualTol)/pivotElt;
+                } else {
+                    ratio = (redcost[i] + dualTol)/pivotElt;
+                }
+                if (ratio < thetaMax) {
+                    thetaMax = ratio;
+                }
+            }
+        }
+
+        int enter = -1;
+        double maxAlpha = 0.0;
+
+        for (int k = 0; k < ncandidates; k++) {
+            int i = candidates[k];
+            double ratio = redcost[i]/tabrowelts[i];
+            if (ratio <= thetaMax) {
+                double absalpha = Math.abs(tabrowelts[i]);
+                if (absalpha > maxAlpha) {
+                    maxAlpha = absalpha;
+                    enter = i;
+                }
+            }
+        }
+        
+        return System.currentTimeMillis() - t;
+    }
 }
 
 
@@ -161,30 +305,37 @@ class IterationData {
     public double[] priceInput;
     public double[] reducedCosts;
     public double[] normalizedTableauRow;
+    public boolean valid;
 
-    public IterationData(LineNumberReader lnr) throws Exception {
-        String[] varstate_strs = lnr.readLine().split(" ");
-        variableState = new int[varstate_strs.length];
-        for (int i = 0; i < varstate_strs.length; i++) {
-            variableState[i] = Integer.parseInt(varstate_strs[i]);
-        }
+    public IterationData(LineNumberReader lnr) {
+        try {
+            String[] varstate_strs = lnr.readLine().split(" ");
+            variableState = new int[varstate_strs.length];
+            for (int i = 0; i < varstate_strs.length; i++) {
+                variableState[i] = Integer.parseInt(varstate_strs[i]);
+            }
 
-        String[] priceInput_strs = lnr.readLine().split(" ");
-        priceInput = new double[priceInput_strs.length];
-        for (int i = 0; i < priceInput_strs.length; i++) {
-            priceInput[i] = Double.parseDouble(priceInput_strs[i]);
-        }
+            String[] priceInput_strs = lnr.readLine().split(" ");
+            priceInput = new double[priceInput_strs.length];
+            for (int i = 0; i < priceInput_strs.length; i++) {
+                priceInput[i] = Double.parseDouble(priceInput_strs[i]);
+            }
 
-        String[] reducedCosts_strs = lnr.readLine().split(" ");
-        reducedCosts = new double[reducedCosts_strs.length];
-        for (int i = 0; i < reducedCosts_strs.length; i++) {
-            reducedCosts[i] = Double.parseDouble(reducedCosts_strs[i]);
-        }
+            String[] reducedCosts_strs = lnr.readLine().split(" ");
+            reducedCosts = new double[reducedCosts_strs.length];
+            for (int i = 0; i < reducedCosts_strs.length; i++) {
+                reducedCosts[i] = Double.parseDouble(reducedCosts_strs[i]);
+            }
 
-        String[] normalizedTableauRow_strs = lnr.readLine().split(" ");
-        normalizedTableauRow = new double[normalizedTableauRow_strs.length];
-        for (int i = 0; i < normalizedTableauRow_strs.length; i++) {
-            normalizedTableauRow[i] = Double.parseDouble(normalizedTableauRow_strs[i]);
+            String[] normalizedTableauRow_strs = lnr.readLine().split(" ");
+            normalizedTableauRow = new double[normalizedTableauRow_strs.length];
+            for (int i = 0; i < normalizedTableauRow_strs.length; i++) {
+                normalizedTableauRow[i] = Double.parseDouble(normalizedTableauRow_strs[i]);
+            }
+
+            valid = true;
+        } catch(Exception e) {
+            valid = false;
         }
     }
 }
