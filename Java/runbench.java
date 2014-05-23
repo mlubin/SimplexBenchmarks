@@ -54,12 +54,12 @@ class SimplexBenchmarks {
             }
 
             System.out.println(nruns + " simulated iterations");
-            System.out.println("Matrix-transpose-vector product with non-basic columns: " + (total_price_time*1.0/nruns) + " sec");
-            System.out.println("Hyper-sparse matrix-transpose-vector product:  " + (total_pricehs_time*1.0/nruns) + " sec");
-            System.out.println("Two-pass dual ratio test: " + (total_twopass_time*1.0/nruns) + " sec");
-            System.out.println("Hyper-sparse two-pass dual ratio test: " + (total_twopasshs_time*1.0/nruns) + " sec");
-            System.out.println("Update dual iterate with cost shifting: " + (total_updual_time*1.0/nruns) + " sec");
-            System.out.println("Hyper-sparse update dual iterate with cost shifting: " + (total_updualhs_time*1.0/nruns) + " sec");
+            System.out.println("Matrix-transpose-vector product with non-basic columns: " + (total_price_time*1.0/nruns/1000000) + " sec");
+            System.out.println("Hyper-sparse matrix-transpose-vector product:  " + (total_pricehs_time*1.0/nruns/1000000) + " sec");
+            System.out.println("Two-pass dual ratio test: " + (total_twopass_time*1.0/nruns/1000000) + " sec");
+            System.out.println("Hyper-sparse two-pass dual ratio test: " + (total_twopasshs_time*1.0/nruns/1000000) + " sec");
+            System.out.println("Update dual iterate with cost shifting: " + (total_updual_time*1.0/nruns/1000000) + " sec");
+            System.out.println("Hyper-sparse update dual iterate with cost shifting: " + (total_updualhs_time*1.0/nruns/1000000) + " sec");
 
         } catch(Exception e) {
             e.printStackTrace();
@@ -79,7 +79,7 @@ class SimplexBenchmarks {
         double[] Anz = A.nzval;
         int[] varstate = d.variableState;
 
-        final long t = System.currentTimeMillis();
+        final long t = System.nanoTime();
 
         for (int i = 0; i < ncol; i++) {
             if (varstate[i] == 1) {  // 1 == BASIC
@@ -110,7 +110,7 @@ class SimplexBenchmarks {
         // System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
         // System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
 
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 
 
@@ -130,7 +130,7 @@ class SimplexBenchmarks {
         int[]    Atrv = Atrans.rowval;
         double[] Atnz = Atrans.nzval;
 
-        final long t = System.currentTimeMillis();
+        final long t = System.nanoTime();
 
         for (int k = 0; k < rho.nnz; k++) {
             int    row = rhoidx[k];
@@ -162,7 +162,7 @@ class SimplexBenchmarks {
         // System.out.println("sum(output - normalizedTableauRow)-1 = " + (sumout_less_norm-1));
         // System.out.println("sum(output + normalizedTableauRow)-1 = " + (sumout_plus_norm-1));
 
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 
 
@@ -181,7 +181,7 @@ class SimplexBenchmarks {
         int[]    varstate = d.variableState;
         double[]   tabrow = d.normalizedTableauRow;
 
-        final long t = System.currentTimeMillis();
+        final long t = System.nanoTime();
 
         for (int i = 0; i < ncol + nrow; i++) {
             int thisState = varstate[i];
@@ -218,7 +218,7 @@ class SimplexBenchmarks {
             }
         }
 
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 
 
@@ -239,7 +239,7 @@ class SimplexBenchmarks {
         double[]  tabrowelts = tabrow.elts;
         int[]      tabrowidx = tabrow.nzidx;
 
-        long t = System.currentTimeMillis();
+        long t = System.nanoTime();
 
         for (int k = 0; k < tabrow.nnz; k++) {
             int i = tabrowidx[k];
@@ -277,7 +277,7 @@ class SimplexBenchmarks {
             }
         }
         
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 
 
@@ -297,7 +297,7 @@ class SimplexBenchmarks {
         final double stepsize = 1.0;
         final double dualTol = 1e-7;
 
-        long t = System.currentTimeMillis();
+        long t = System.nanoTime();
 
         for (int i = 0; i < nrow + ncol; i++) {
             double dnew = redcost[i] - stepsize * tabrow[i];
@@ -319,7 +319,7 @@ class SimplexBenchmarks {
             }
         }
         
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 
 
@@ -341,7 +341,7 @@ class SimplexBenchmarks {
         final double stepsize = 1.0;
         final double dualTol = 1e-7;
 
-        long t = System.currentTimeMillis();
+        long t = System.nanoTime();
 
         for (int j = 0; j < tabrow.nnz; j++) {
             int i = tabrowidx[j];
@@ -364,7 +364,7 @@ class SimplexBenchmarks {
             }
         }
 
-        return System.currentTimeMillis() - t;
+        return System.nanoTime() - t;
     }
 }
 
