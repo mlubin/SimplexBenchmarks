@@ -288,6 +288,19 @@ if __name__ == "__main__":
 			(doUpdateDualsHypersparse,"Hyper-sparse update dual iterate with cost shifting")
 			]
 
+        # warm up the JIT (for PyPy)
+        for k in xrange(10):
+                dat = readIteration(f)
+		if not dat.valid:
+			break
+		for i in xrange(len(benchmarks)):
+			func,name = benchmarks[i]
+			func(instance,dat)
+
+	f.close()
+	f = open(sys.argv[1],'r')
+	readInstance(f)
+
 	timings = len(benchmarks)*[0.]
 	nruns = 0
 	while True:

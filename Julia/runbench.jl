@@ -359,6 +359,21 @@ function doBenchmarks(inputname)
         (doTwoPassRatioTestHypersparse,"Hyper-sparse two-pass dual ratio test"),
         (doUpdateDuals,"Update dual iterate with cost shifting"),
         (doUpdateDualsHypersparse,"Hyper-sparse update dual iterate with cost shifting")]
+    # warm up the JIT
+    for k in 1:2
+        dat = readIteration(f)
+        if !dat.valid
+            break
+        end
+        for i in 1:length(benchmarks)
+            func,name = benchmarks[i]
+            func(instance,dat)
+        end
+    end
+    close(f)
+    f = open(inputname,"r")
+    readInstance(f)
+    
     timings = zeros(length(benchmarks))
     nruns = 0
     while true
