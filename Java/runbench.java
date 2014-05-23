@@ -2,10 +2,8 @@ import java.io.*;
 
 class SimplexBenchmarks {
     public static void main(String[] args) {
-        System.out.println("Hello World!"); // Display the string.
-
         try {
-            FileReader fr = new FileReader(new File("../GenerateData/greenbea.dump"));
+            FileReader fr = new FileReader(new File(args[0]));
             LineNumberReader lnr = new LineNumberReader(fr);
 
             InstanceData instance = new InstanceData(lnr);
@@ -19,6 +17,8 @@ class SimplexBenchmarks {
             long total_pricehs_time = 0;
             long total_twopass_time = 0;
             long total_twopasshs_time = 0;
+            long total_updual_time = 0;
+            long total_updualhs_time = 0;
 
             while (true) {
                 IterationData itdata = new IterationData(lnr);
@@ -43,15 +43,23 @@ class SimplexBenchmarks {
                 long twopasshs_time = doTwoPassRatioTestHypersparse(instance, itdata);
                 total_twopasshs_time += twopasshs_time;
                 // System.out.println(twopasshs_time);
+
+                long updual_time = doUpdateDuals(instance, itdata);
+                total_updual_time += updual_time;
+                // System.out.println(updual_time);
+
+                long updualhs_time = doUpdateDualsHypersparse(instance, itdata);
+                total_updualhs_time += updualhs_time;
+                // System.out.println(updualhs_time);
             }
 
             System.out.println(nruns + " simulated iterations");
-            System.out.println("Matrix-transpose-vector product with non-basic columns: " + total_price_time*1.0 / nruns + " sec");
-            System.out.println("Hyper-sparse matrix-transpose-vector product:  " + total_pricehs_time*1.0 / nruns + " sec");
-            System.out.println("Two-pass dual ratio test: " + total_twopass_time*1.0 / nruns + " sec");
-            System.out.println("Hyper-sparse two-pass dual ratio test: " + total_twopasshs_time*1.0 / nruns + " sec");
-            // Update dual iterate with cost shifting: 0.014618396759033203 sec
-            // Hyper-sparse update dual iterate with cost shifting: 0.007954835891723633 sec
+            System.out.println("Matrix-transpose-vector product with non-basic columns: " + (total_price_time*1.0/nruns) + " sec");
+            System.out.println("Hyper-sparse matrix-transpose-vector product:  " + (total_pricehs_time*1.0/nruns) + " sec");
+            System.out.println("Two-pass dual ratio test: " + (total_twopass_time*1.0/nruns) + " sec");
+            System.out.println("Hyper-sparse two-pass dual ratio test: " + (total_twopasshs_time*1.0/nruns) + " sec");
+            System.out.println("Update dual iterate with cost shifting: " + (total_updual_time*1.0/nruns) + " sec");
+            System.out.println("Hyper-sparse update dual iterate with cost shifting: " + (total_updualhs_time*1.0/nruns) + " sec");
 
         } catch(Exception e) {
             e.printStackTrace();
@@ -222,8 +230,8 @@ class SimplexBenchmarks {
         int[] candidates = new int[ncol];
         int ncandidates = 0;
         double thetaMax = 1e25;
-        double pivotTol = 1e-7;
-        double dualTol = 1e-7;
+        final double pivotTol = 1e-7;
+        final double dualTol = 1e-7;
 
         double[]  redcost = d.reducedCosts;
         int[]    varstate = d.variableState;
@@ -269,6 +277,93 @@ class SimplexBenchmarks {
             }
         }
         
+        return System.currentTimeMillis() - t;
+    }
+
+
+    public static long doUpdateDuals(InstanceData instance, IterationData d) {
+        // Direct translation of the Python code
+        SparseMatrixCSC A = instance.A;
+        int nrow = A.nrow;
+        int ncol = A.ncol;
+
+        double[] redcost = new double[d.reducedCosts.length];
+        for (int i = 0; i < d.reducedCosts.length; i++) {
+            redcost[i] = d.reducedCosts[i];
+        }
+        int[] varstate = d.variableState;
+        double[] tabrow = d.normalizedTableauRow;
+
+        final double stepsize = 1.0;
+        final double dualTol = 1e-7;
+
+        long t = System.currentTimeMillis();
+
+        for (int i = 0; i < nrow + ncol; i++) {
+            double dnew = redcost[i] - stepsize * tabrow[i];
+
+            // AT LOWER
+            if (varstate[i] == 2) {
+                if (dnew >= dualTol) {
+                    redcost[i] = dnew;
+                } else {
+                    redcost[i] = -dualTol;
+                }
+            // AT UPPER
+            } else if (varstate[i] == 3) {
+                if (dnew <= dualTol) {
+                    redcost[i] = dnew;
+                } else {
+                    redcost[i] = dualTol;
+                }
+            }
+        }
+        
+        return System.currentTimeMillis() - t;
+    }
+
+
+    public static long doUpdateDualsHypersparse(InstanceData instance, IterationData d) {
+        // Direct translation of the Python code
+        SparseMatrixCSC A = instance.A;
+        int nrow = A.nrow;
+        int ncol = A.ncol;
+
+        double[] redcost = new double[d.reducedCosts.length];
+        for (int i = 0; i < d.reducedCosts.length; i++) {
+            redcost[i] = d.reducedCosts[i];
+        }
+        int[] varstate = d.variableState;
+        IndexedVector tabrow = new IndexedVector(d.normalizedTableauRow);
+        double[]  tabrowelts = tabrow.elts;
+        int[]      tabrowidx = tabrow.nzidx;
+
+        final double stepsize = 1.0;
+        final double dualTol = 1e-7;
+
+        long t = System.currentTimeMillis();
+
+        for (int j = 0; j < tabrow.nnz; j++) {
+            int i = tabrowidx[j];
+            double dnew = redcost[i] - stepsize * tabrowelts[i];
+
+            // AT LOWER
+            if (varstate[i] == 2) {
+                if (dnew >= dualTol) {
+                    redcost[i] = dnew;
+                } else {
+                    redcost[i] = -dualTol;
+                }
+            // AT UPPER
+            } else if (varstate[i] == 3) {
+                if (dnew <= dualTol) {
+                    redcost[i] = dnew;
+                } else {
+                    redcost[i] = dualTol;
+                }
+            }
+        }
+
         return System.currentTimeMillis() - t;
     }
 }
