@@ -3,15 +3,6 @@ import java.io.*;
 class SimplexBenchmarks {
     public static void main(String[] args) {
         try {
-            FileReader fr = new FileReader(new File(args[0]));
-            LineNumberReader lnr = new LineNumberReader(fr);
-
-            InstanceData instance = new InstanceData(lnr);
-            
-            System.out.println("Problem is " + instance.A.nrow +
-                                " by " + instance.A.ncol +
-                                " with " + instance.A.nnz + " nonzeros");
-
             int nruns = 0;
             long total_price_time = 0;
             long total_pricehs_time = 0;
@@ -20,38 +11,64 @@ class SimplexBenchmarks {
             long total_updual_time = 0;
             long total_updualhs_time = 0;
 
-            while (true) {
-                IterationData itdata = new IterationData(lnr);
-                if (!itdata.valid) {
-                    break;
+            // Run twice to warm up the JIT.
+            // Report timings from second run.
+            for (int i = 0; i < 2; i++) {
+                FileReader fr = new FileReader(new File(args[0]));
+                LineNumberReader lnr = new LineNumberReader(fr);
+
+                InstanceData instance = new InstanceData(lnr);
+
+                if (i == 1) {
+                    System.out.println("Problem is " + instance.A.nrow +
+                                " by " + instance.A.ncol +
+                                " with " + instance.A.nnz + " nonzeros");
                 }
-
-                nruns += 1;
-
-                long price_time = doPrice(instance, itdata);
-                total_price_time += price_time;
-                // System.out.println(price_time);
                 
-                long pricehs_time = doPriceHypersparse(instance, itdata);
-                total_pricehs_time += pricehs_time;
-                // System.out.println(pricehs_time);
-                
-                long twopass_time = doTwoPassRatioTest(instance, itdata);
-                total_twopass_time += twopass_time;
-                // System.out.println(twopass_time);
 
-                long twopasshs_time = doTwoPassRatioTestHypersparse(instance, itdata);
-                total_twopasshs_time += twopasshs_time;
-                // System.out.println(twopasshs_time);
+                nruns = 0;
+                total_price_time = 0;
+                total_pricehs_time = 0;
+                total_twopass_time = 0;
+                total_twopasshs_time = 0;
+                total_updual_time = 0;
+                total_updualhs_time = 0;
 
-                long updual_time = doUpdateDuals(instance, itdata);
-                total_updual_time += updual_time;
-                // System.out.println(updual_time);
+                while (true) {
+                    IterationData itdata = new IterationData(lnr);
+                    if (!itdata.valid) {
+                        break;
+                    }
 
-                long updualhs_time = doUpdateDualsHypersparse(instance, itdata);
-                total_updualhs_time += updualhs_time;
-                // System.out.println(updualhs_time);
+                    nruns += 1;
+
+                    long price_time = doPrice(instance, itdata);
+                    total_price_time += price_time;
+                    // System.out.println(price_time);
+                    
+                    long pricehs_time = doPriceHypersparse(instance, itdata);
+                    total_pricehs_time += pricehs_time;
+                    // System.out.println(pricehs_time);
+                    
+                    long twopass_time = doTwoPassRatioTest(instance, itdata);
+                    total_twopass_time += twopass_time;
+                    // System.out.println(twopass_time);
+
+                    long twopasshs_time = doTwoPassRatioTestHypersparse(instance, itdata);
+                    total_twopasshs_time += twopasshs_time;
+                    // System.out.println(twopasshs_time);
+
+                    long updual_time = doUpdateDuals(instance, itdata);
+                    total_updual_time += updual_time;
+                    // System.out.println(updual_time);
+
+                    long updualhs_time = doUpdateDualsHypersparse(instance, itdata);
+                    total_updualhs_time += updualhs_time;
+                    // System.out.println(updualhs_time);
+                }
             }
+
+            
 
             System.out.println(nruns + " simulated iterations");
             System.out.println("Matrix-transpose-vector product with non-basic columns: " + (total_price_time*1.0/nruns/1000000) + " sec");
