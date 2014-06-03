@@ -220,9 +220,9 @@ def doTwoPassRatioTestHypersparse(instance,d):
 def doUpdateDuals(instance,d):
 	nrow,ncol = instance.A.nrow,instance.A.ncol
 	
-	redcost = d.reducedCosts
+	redcost = deepcopy(d.reducedCosts)
 	varstate = d.variableState
-	tabrow = deepcopy(d.normalizedTableauRow)
+	tabrow = d.normalizedTableauRow
 
 	stepsize = 1.
 
@@ -247,7 +247,7 @@ def doUpdateDuals(instance,d):
 def doUpdateDualsHypersparse(instance,d):
 	nrow,ncol = instance.A.nrow,instance.A.ncol
 	
-	redcost = d.reducedCosts
+	redcost = deepcopy(d.reducedCosts)
 	varstate = d.variableState
 	tabrow = IndexedVector(d.normalizedTableauRow)
 	tabrowelts = tabrow.elts
